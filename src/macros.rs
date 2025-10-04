@@ -3,11 +3,11 @@ use pyo3::types::{PyStringMethods, PyTypeMethods};
 /// Returns the type name of a [`pyo3::ffi::PyObject`].
 ///
 /// Returns `"<unknown>"` on failure.
-#[cfg_attr(feature = "optimize", optimize(speed))]
+#[optimize(speed)]
 pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObject) -> String {
     let type_ = pyo3::ffi::Py_TYPE(obj);
 
-    if type_.is_null() {
+    if std::hint::unlikely(type_.is_null()) {
         String::from("<unknown>")
     } else {
         let obj = unsafe { pyo3::types::PyType::from_borrowed_type_ptr(py, type_) };
@@ -23,6 +23,14 @@ pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObj
 }
 
 /// Creates a new [`pyo3::exceptions::PyTypeError`]
+/// 
+/// ```rust
+/// typeerror!(
+///     "expected str, got {:?}",
+///     py,
+///     value.as_ptr(),
+/// )
+/// ```
 #[macro_export]
 macro_rules! typeerror {
     (
