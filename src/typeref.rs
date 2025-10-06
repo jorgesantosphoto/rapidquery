@@ -1,5 +1,6 @@
 use once_cell::race::OnceBool;
 
+// Column types
 pub(crate) static mut TINY_INTEGER_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 pub(crate) static mut SMALL_INTEGER_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 pub(crate) static mut INTEGER_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
@@ -38,6 +39,11 @@ pub(crate) static mut VECTOR_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::pt
 pub(crate) static mut INTERVAL_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 pub(crate) static mut ENUM_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 pub(crate) static mut ARRAY_COLUMN_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
+
+// Sential types
+pub(crate) static mut ASTERISK_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
+
+// Python standard libraries types
 pub(crate) static mut STD_DECIMAL_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 pub(crate) static mut STD_UUID_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
 pub(crate) static mut STD_DATETIME_TYPE: *mut pyo3::ffi::PyTypeObject = std::ptr::null_mut();
@@ -104,6 +110,8 @@ fn _initialize_typeref(py: pyo3::Python) -> bool {
         INTERVAL_COLUMN_TYPE = get_type_object_for::<crate::column::types::PyIntervalType>(py);
         ENUM_COLUMN_TYPE = get_type_object_for::<crate::column::types::PyEnumType>(py);
         ARRAY_COLUMN_TYPE = get_type_object_for::<crate::column::types::PyArrayType>(py);
+
+        ASTERISK_TYPE = get_type_object_for::<crate::common::PyAsteriskType>(py);
 
         STD_DECIMAL_TYPE = look_up_type_object(c"decimal", c"Decimal");
         STD_UUID_TYPE = look_up_type_object(c"uuid", c"UUID");

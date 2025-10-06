@@ -1,12 +1,13 @@
 #![feature(likely_unlikely)]
 #![feature(optimize_attribute)]
 
-/// Helper macros whole the crate
+/// Helper macros and some utilitize functions
 #[macro_use]
 mod macros;
 
 mod adaptation;
 mod column;
+mod common;
 mod typeref;
 
 /// RapidQuery core module written in Rust
@@ -30,6 +31,9 @@ mod _lib {
     #[pymodule_export]
     use super::adaptation::PyAdaptedValue;
 
+    #[pymodule_export]
+    use super::common::PyAsteriskType;
+
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         m.add("INTERVAL_YEAR", sea_query::PgInterval::Year as u8)?;
@@ -45,6 +49,8 @@ mod _lib {
         m.add("INTERVAL_HOUR_TO_MINUTE", sea_query::PgInterval::HourToMinute as u8)?;
         m.add("INTERVAL_HOUR_TO_SECOND", sea_query::PgInterval::HourToSecond as u8)?;
         m.add("INTERVAL_MINUTE_TO_SECOND", sea_query::PgInterval::MinuteToSecond as u8)?;
+
+        m.add("ASTERISK", PyAsteriskType {})?;
 
         super::typeref::initialize_typeref(m.py());
 

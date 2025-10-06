@@ -4,6 +4,14 @@ import decimal
 import typing
 import uuid
 
+class _AsteriskType:
+    """
+    Asterisk `"*"` - very useful for expression creating
+    """
+    ...
+
+ASTERISK: typing.Final[_AsteriskType]
+
 T = typing.TypeVar("T")
 
 class ColumnTypeMeta(typing.Generic[T]):
