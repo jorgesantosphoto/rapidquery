@@ -138,6 +138,6 @@ fn _initialize_typeref(py: pyo3::Python) -> bool {
 
 static INIT: OnceBool = OnceBool::new();
 
-pub(crate) fn initialize_typeref(py: pyo3::Python) {
+pub fn initialize_typeref(py: pyo3::Python) {
     INIT.get_or_init(|| _initialize_typeref(py));
 }

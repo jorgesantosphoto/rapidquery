@@ -629,6 +629,15 @@ class ColumnRef:
     def __ne__(self, other: "ColumnRef") -> bool: ...
     def __repr__(self) -> str: ...
 
+ExprUnion = typing.Union[
+    Self,
+    AdaptedValue,
+    ColumnRef,
+    tuple,
+    _AsteriskType,
+    typing.Any,
+]
+
 class Expr:
     """
     Represents a Simple Expression in SQL.
@@ -636,14 +645,7 @@ class Expr:
 
     def __new__(
         cls,
-        value: typing.Union[
-            Self,
-            AdaptedValue,
-            ColumnRef,
-            tuple,
-            _AsteriskType,
-            typing.Any,
-        ],
+        value: ExprUnion,
         /,
     ) -> Self: ...
     @classmethod
@@ -917,3 +919,64 @@ def any(arg1: Expr, *args: Expr) -> Expr:
     Create a condition that is true if any of the conditions is true.
     """
     ...
+
+class ColumnDef:
+    """
+    Defines a table column with its properties and constraints.
+
+    Represents a complete column definition including:
+    - Column name and data type
+    - Constraints (primary key, unique, nullable)
+    - Auto-increment behavior
+    - Comments and extra specifications
+
+    This class is used within TableCreateStatement to specify the structure
+    of table columns. It encapsulates all the properties that define how
+    a column behaves and what data it can store.
+    """
+
+    name: str
+    """The name of the column."""
+
+    type: ColumnTypeMeta
+    """The data type of the column."""
+
+    primary_key: bool
+    """Whether this column is part of the primary key."""
+
+    nullable: bool
+    """Whether this column can contain NULL values."""
+
+    unique: bool
+    """Whether this column must contain unique values."""
+
+    auto_increment: bool
+    """Whether this column should auto-increment."""
+
+    extra: typing.Optional[str]
+    """Extra SQL specifications for this column."""
+
+    default: typing.Optional[Expr]
+    """Default value for this column."""
+
+    generated: typing.Optional[Expr]
+    stored_generated: bool
+
+    comment: typing.Optional[str]
+    """Comment describing this column."""
+
+    def __init__(
+        self,
+        name: str,
+        type: ColumnTypeMeta,
+        primary_key: bool = ...,
+        unique: bool = ...,
+        nullable: bool = ...,
+        auto_increment: bool = ...,
+        extra: typing.Optional[str] = ...,
+        comment: typing.Optional[str] = ...,
+        default: ExprUnion = ...,
+        generated: ExprUnion = ...,
+        stored_generated: bool = ...,
+    ) -> None: ...
+    def __repr__(self) -> str: ...

@@ -10,6 +10,8 @@
 #[macro_use]
 mod macros;
 
+mod parameters;
+
 mod adaptation;
 mod column;
 mod common;
@@ -41,7 +43,7 @@ mod _lib {
     use super::common::{PyAsteriskType, PyColumnRef};
 
     #[pymodule_export]
-    use super::expression::{PyExpr, PyFunctionCall, any, all};
+    use super::expression::{all, any, PyExpr, PyFunctionCall};
 
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
