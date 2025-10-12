@@ -42,7 +42,7 @@ mod _lib {
     use super::adaptation::PyAdaptedValue;
 
     #[pymodule_export]
-    use super::common::{PyAsteriskType, PyColumnRef};
+    use super::common::{PyAsteriskType, PyColumnRef, PyTableName};
 
     #[pymodule_export]
     use super::expression::{all, any, PyExpr, PyFunctionCall};

@@ -681,40 +681,39 @@ impl PyColumn {
         let lock = self.inner.lock();
 
         let mut s: Vec<u8> = Vec::with_capacity(20);
-        write!(&mut s, "Column({:?}, {}", lock.name, lock.r#type).unwrap();
+        write!(s, "<Column {:?} type={}", lock.name, lock.r#type).unwrap();
 
         if lock.options & (ColumnOptions::PrimaryKey as u8) > 0 {
-            write!(&mut s, ", primary_key=True").unwrap();
+            write!(s, " primary_key=True").unwrap();
         }
         if lock.options & (ColumnOptions::Null as u8) > 0 {
-            write!(&mut s, ", nullable=True").unwrap();
+            write!(s, " nullable=True").unwrap();
         }
         if lock.options & (ColumnOptions::NotNull as u8) > 0 {
-            write!(&mut s, ", nullable=False").unwrap();
+            write!(s, " nullable=False").unwrap();
         }
         if lock.options & (ColumnOptions::UniqueKey as u8) > 0 {
-            write!(&mut s, ", unique=True").unwrap();
+            write!(s, " unique=True").unwrap();
         }
         if lock.options & (ColumnOptions::AutoIncrement as u8) > 0 {
-            write!(&mut s, ", auto_increment=True").unwrap();
+            write!(s, " auto_increment=True").unwrap();
         }
         if let Some(x) = &lock.extra {
-            write!(&mut s, ", extra={x:?}").unwrap();
+            write!(s, " extra={x:?}").unwrap();
         }
         if let Some(x) = &lock.comment {
-            write!(&mut s, ", comment={x:?}").unwrap();
+            write!(s, " comment={x:?}").unwrap();
         }
         if let Some(x) = &lock.default {
-            write!(&mut s, ", default={x}").unwrap();
+            write!(s, " default={x}").unwrap();
         }
         if let Some(x) = &lock.generated {
-            write!(&mut s, ", generated={x}").unwrap();
+            write!(s, " generated={x}").unwrap();
         }
         if lock.options & (ColumnOptions::StoredGenerated as u8) > 0 {
-            write!(&mut s, ", stored_generated=True").unwrap();
+            write!(s, " stored_generated=True").unwrap();
         }
-
-        write!(&mut s, ")").unwrap();
+        write!(s, ">").unwrap();
 
         unsafe { String::from_utf8_unchecked(s) }
     }
