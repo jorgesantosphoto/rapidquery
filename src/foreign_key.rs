@@ -67,6 +67,27 @@ impl PyForeignKeySpec {
             None => String::from("FK_") + &uuid::Uuid::new_v4().as_simple().to_string(),
         };
 
+        if from_columns.is_empty() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "from_columns is empty",
+            ));
+        }
+        if to_columns.is_empty() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "to_columns is empty",
+            ));
+        }
+
+        if from_columns.len() != to_columns.len() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                format!(
+                    "from_columns and to_columns must have same length ({} != {})",
+                    from_columns.len(),
+                    to_columns.len()
+                ),
+            ));
+        }
+
         Ok(Self {
             inner: parking_lot::Mutex::new(ForeignKeySpecInner {
                 name,
@@ -128,9 +149,27 @@ impl PyForeignKeySpec {
     }
 
     #[setter]
-    fn set_from_columns(&self, val: Vec<String>) {
+    fn set_from_columns(&self, val: Vec<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
+
+        if val.is_empty() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "from_columns cannot be empty",
+            ));
+        }
+
+        if lock.to_columns.len() != val.len() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                format!(
+                    "from_columns and to_columns must have same length ({} != {})",
+                    val.len(),
+                    lock.to_columns.len(),
+                ),
+            ));
+        }
+
         lock.from_columns = val;
+        Ok(())
     }
 
     #[getter]
@@ -139,9 +178,27 @@ impl PyForeignKeySpec {
     }
 
     #[setter]
-    fn set_to_columns(&self, val: Vec<String>) {
+    fn set_to_columns(&self, val: Vec<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
+
+        if val.is_empty() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "to_columns cannot be empty",
+            ));
+        }
+
+        if lock.from_columns.len() != val.len() {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                format!(
+                    "from_columns and to_columns must have same length ({} != {})",
+                    lock.from_columns.len(),
+                    val.len()
+                ),
+            ));
+        }
+
         lock.to_columns = val;
+        Ok(())
     }
 
     #[getter]

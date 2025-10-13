@@ -1298,3 +1298,37 @@ class ForeignKeySpec:
         on_update: typing.Optional[int] = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
+
+
+INDEX_ORDER_ASC: typing.Final[int]
+INDEX_ORDER_DESC: typing.Final[int]
+
+class IndexColumnDef:
+    """
+    Defines a column within an index specification.
+
+    Represents a single column's participation in an index, including:
+    - The column name
+    - Optional prefix length (for partial indexing)
+    - Sort order (ascending or descending)
+
+    Used within IndexCreateStatement to specify which columns are indexed
+    and how they should be ordered.
+    """
+
+    name: str
+    """The name of the column to include in the index."""
+
+    prefix: typing.Optional[int]
+    """Number of characters to index for string columns (prefix indexing)."""
+
+    order: typing.Optional[int]
+    """Sort order for this column (INDEX_ORDER_ASC or INDEX_ORDER_DESC)."""
+
+    def __new__(
+        self, name: str, prefix: typing.Optional[int] = ..., order: typing.Optional[int] = ...
+    ) -> Self: ...
+    def __copy__(self) -> Self: ...
+    def copy(self) -> Self: ...
+    def __repr__(self) -> str: ...
+

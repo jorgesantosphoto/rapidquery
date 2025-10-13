@@ -3,7 +3,7 @@ use sea_query::IntoIden;
 use std::str::FromStr;
 
 /// Asterisk type - very useful for expression creating
-#[pyo3::pyclass(module = "rapidorm_core.builtins", name = "_AsteriskType", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "_AsteriskType", frozen)]
 pub struct PyAsteriskType {}
 
 #[derive(Clone, PartialEq, Debug)]
@@ -164,19 +164,11 @@ impl PyColumnRef {
     }
 
     fn __copy__(&self) -> Self {
-        Self {
-            col: self.col.clone(),
-            table: self.table.clone(),
-            schema: self.schema.clone(),
-        }
+        self.clone()
     }
 
     fn copy(&self) -> Self {
-        Self {
-            col: self.col.clone(),
-            table: self.table.clone(),
-            schema: self.schema.clone(),
-        }
+        self.clone()
     }
 
     fn __repr__(&self) -> String {
@@ -282,7 +274,9 @@ impl FromStr for PyTableName {
 }
 
 impl PyTableName {
-    pub fn from_pyobject(value: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+    pub fn from_pyobject(
+        value: &pyo3::Bound<'_, pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         unsafe {
             if pyo3::ffi::Py_TYPE(value.as_ptr()) == crate::typeref::TABLE_NAME_TYPE {
                 Ok(value.clone().unbind())
@@ -354,19 +348,11 @@ impl PyTableName {
     }
 
     fn __copy__(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            schema: self.schema.clone(),
-            database: self.database.clone(),
-        }
+        self.clone()
     }
 
     fn copy(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            schema: self.schema.clone(),
-            database: self.database.clone(),
-        }
+        self.clone()
     }
 
     fn __repr__(&self) -> String {
@@ -382,6 +368,100 @@ impl PyTableName {
             write!(s, " database={:?}", x.to_string()).unwrap();
         }
         write!(s, ">").unwrap();
+
+        unsafe { String::from_utf8_unchecked(s) }
+    }
+}
+
+#[pyo3::pyclass(module = "rapidquery._lib", name = "IndexColumn", frozen)]
+#[derive(Clone)]
+pub struct PyIndexColumn {
+    pub(crate) name: String,
+    pub(crate) prefix: Option<u32>,
+    pub(crate) order: Option<sea_query::IndexOrder>,
+}
+
+impl sea_query::IntoIndexColumn for PyIndexColumn {
+    fn into_index_column(self) -> sea_query::IndexColumn {
+        match (self.prefix, self.order) {
+            (Some(p), Some(o)) => (sea_query::Alias::new(self.name), p, o).into_index_column(),
+            (Some(p), None) => (sea_query::Alias::new(self.name), p).into_index_column(),
+            (None, Some(o)) => (sea_query::Alias::new(self.name), o).into_index_column(),
+            (None, None) => sea_query::Alias::new(self.name).into_index_column(),
+        }
+    }
+}
+
+impl FromStr for PyIndexColumn {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            name: s.to_owned(),
+            prefix: None,
+            order: None,
+        })
+    }
+}
+
+#[pyo3::pymethods]
+impl PyIndexColumn {
+    #[new]
+    #[pyo3(signature=(name, prefix=None, order=None))]
+    fn new(name: String, prefix: Option<u32>, order: Option<u8>) -> pyo3::PyResult<Self> {
+        if order.is_some_and(|x| x > 1) {
+            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Use INDEX_ORDER_* constants as order",
+            ));
+        }
+
+        Ok(Self {
+            name,
+            prefix,
+            order: order.map(|x| unsafe { std::mem::transmute(x) }),
+        })
+    }
+
+    #[getter]
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    #[getter]
+    fn prefix(&self) -> Option<u32> {
+        self.prefix
+    }
+
+    #[getter]
+    fn order(&self) -> Option<u8> {
+        self.order.as_ref().map(|x| x.clone() as u8)
+    }
+
+    fn __copy__(&self) -> Self {
+        self.clone()
+    }
+
+    fn copy(&self) -> Self {
+        self.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        use std::io::Write;
+
+        let mut s = Vec::new();
+        write!(&mut s, "<IndexColumn {:?}", self.name).unwrap();
+
+        if let Some(x) = self.prefix {
+            write!(&mut s, " prefix={}", x).unwrap();
+        }
+        if let Some(x) = &self.order {
+            if matches!(x, sea_query::IndexOrder::Asc) {
+                write!(&mut s, " order=INDEX_ORDER_ASC").unwrap();
+            } else {
+                write!(&mut s, " order=INDEX_ORDER_DESC").unwrap();
+            }
+        }
+        write!(&mut s, ">").unwrap();
 
         unsafe { String::from_utf8_unchecked(s) }
     }
