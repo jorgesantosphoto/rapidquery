@@ -1,3 +1,56 @@
+use std::str::FromStr;
+
+#[derive(Debug, Clone, Copy)]
+pub struct ForeignKeyActionAlias(sea_query::ForeignKeyAction);
+
+impl FromStr for ForeignKeyActionAlias {
+    type Err = pyo3::PyErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lower = s.to_ascii_lowercase();
+
+        if lower == "cascade" {
+            Ok(Self(sea_query::ForeignKeyAction::Cascade))
+        } else if lower == "no action" {
+            Ok(Self(sea_query::ForeignKeyAction::NoAction))
+        } else if lower == "restrict" {
+            Ok(Self(sea_query::ForeignKeyAction::Restrict))
+        } else if lower == "set default" {
+            Ok(Self(sea_query::ForeignKeyAction::SetDefault))
+        } else if lower == "set null" {
+            Ok(Self(sea_query::ForeignKeyAction::SetNull))
+        } else {
+            Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                format!("unknown foreign key action: {s}"),
+            ))
+        }
+    }
+}
+
+impl From<ForeignKeyActionAlias> for sea_query::ForeignKeyAction {
+    fn from(value: ForeignKeyActionAlias) -> Self {
+        value.0
+    }
+}
+
+impl From<sea_query::ForeignKeyAction> for ForeignKeyActionAlias {
+    fn from(value: sea_query::ForeignKeyAction) -> Self {
+        Self(value)
+    }
+}
+
+impl std::fmt::Display for ForeignKeyActionAlias {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            sea_query::ForeignKeyAction::Cascade => write!(f, "CASCADE"),
+            sea_query::ForeignKeyAction::NoAction => write!(f, "NO ACTION"),
+            sea_query::ForeignKeyAction::Restrict => write!(f, "RESTRICT"),
+            sea_query::ForeignKeyAction::SetDefault => write!(f, "SET DEFAULT"),
+            sea_query::ForeignKeyAction::SetNull => write!(f, "SET NULL"),
+        }
+    }
+}
+
 pub struct ForeignKeySpecInner {
     pub name: String,
 
@@ -9,8 +62,22 @@ pub struct ForeignKeySpecInner {
     pub from_table: Option<pyo3::Py<pyo3::PyAny>>,
     pub from_columns: Vec<String>,
 
-    pub on_delete: Option<sea_query::ForeignKeyAction>,
-    pub on_update: Option<sea_query::ForeignKeyAction>,
+    pub on_delete: Option<ForeignKeyActionAlias>,
+    pub on_update: Option<ForeignKeyActionAlias>,
+}
+
+impl ForeignKeySpecInner {
+    pub fn clone_ref(&self, py: pyo3::Python) -> Self {
+        Self {
+            name: self.name.clone(),
+            to_table: self.to_table.clone_ref(py),
+            to_columns: self.to_columns.clone(),
+            from_table: self.from_table.as_ref().map(|x| x.clone_ref(py)),
+            from_columns: self.to_columns.clone(),
+            on_delete: self.on_delete,
+            on_update: self.on_update,
+        }
+    }
 }
 
 #[pyo3::pyclass(module = "rapidquery._lib", name = "ForeignKeySpec", frozen)]
@@ -38,20 +105,18 @@ impl PyForeignKeySpec {
         to_table: &pyo3::Bound<'_, pyo3::PyAny>,
         from_table: Option<&pyo3::Bound<'_, pyo3::PyAny>>,
         name: Option<String>,
-        on_delete: Option<u8>,
-        on_update: Option<u8>,
+        on_delete: Option<String>,
+        on_update: Option<String>,
     ) -> pyo3::PyResult<Self> {
-        if on_delete.is_some_and(|x| x > 4) {
-            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "use FOREIGN_KEY_ACTION_* constants for on_delete",
-            ));
-        }
+        let on_delete = match on_delete {
+            None => None,
+            Some(x) => Some(ForeignKeyActionAlias::from_str(&x)?),
+        };
 
-        if on_update.is_some_and(|x| x > 4) {
-            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "use FOREIGN_KEY_ACTION_* constants for on_update",
-            ));
-        }
+        let on_update = match on_update {
+            None => None,
+            Some(x) => Some(ForeignKeyActionAlias::from_str(&x)?),
+        };
 
         let to_table: pyo3::Py<pyo3::PyAny> = crate::common::PyTableName::from_pyobject(to_table)?;
 
@@ -95,8 +160,8 @@ impl PyForeignKeySpec {
                 to_columns,
                 from_table,
                 from_columns,
-                on_delete: on_delete.map(|x| unsafe { std::mem::transmute(x) }),
-                on_update: on_update.map(|x| unsafe { std::mem::transmute(x) }),
+                on_delete,
+                on_update,
             }),
         })
     }
@@ -204,41 +269,55 @@ impl PyForeignKeySpec {
     }
 
     #[getter]
-    fn on_delete(&self) -> Option<u8> {
-        self.inner.lock().on_delete.map(|x| x as u8)
+    fn on_delete(&self) -> Option<String> {
+        self.inner.lock().on_delete.map(|x| x.to_string())
     }
 
     #[setter]
-    fn set_on_delete(&self, val: Option<u8>) -> pyo3::PyResult<()> {
-        if val.is_some_and(|x| x > 4) {
-            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "use FOREIGN_KEY_ACTION_* constants",
-            ));
-        }
+    fn set_on_delete(&self, val: Option<String>) -> pyo3::PyResult<()> {
+        let val = match val {
+            None => None,
+            Some(x) => Some(ForeignKeyActionAlias::from_str(&x)?),
+        };
 
         let mut lock = self.inner.lock();
-        lock.on_delete = val.map(|x| unsafe { std::mem::transmute(x) });
+        lock.on_delete = val;
 
         Ok(())
     }
 
     #[getter]
-    fn on_update(&self) -> Option<u8> {
-        self.inner.lock().on_update.map(|x| x as u8)
+    fn on_update(&self) -> Option<String> {
+        self.inner.lock().on_update.map(|x| x.to_string())
     }
 
     #[setter]
-    fn set_on_update(&self, val: Option<u8>) -> pyo3::PyResult<()> {
-        if val.is_some_and(|x| x > 4) {
-            return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "use FOREIGN_KEY_ACTION_* constants",
-            ));
-        }
+    fn set_on_update(&self, val: Option<String>) -> pyo3::PyResult<()> {
+        let val = match val {
+            None => None,
+            Some(x) => Some(ForeignKeyActionAlias::from_str(&x)?),
+        };
 
         let mut lock = self.inner.lock();
-        lock.on_update = val.map(|x| unsafe { std::mem::transmute(x) });
+        lock.on_update = val;
 
         Ok(())
+    }
+
+    fn __copy__(&self, py: pyo3::Python) -> Self {
+        let lock = self.inner.lock();
+
+        Self {
+            inner: parking_lot::Mutex::new(lock.clone_ref(py)),
+        }
+    }
+
+    fn copy(&self, py: pyo3::Python) -> Self {
+        let lock = self.inner.lock();
+
+        Self {
+            inner: parking_lot::Mutex::new(lock.clone_ref(py)),
+        }
     }
 
     fn __repr__(&self) -> String {
@@ -258,10 +337,10 @@ impl PyForeignKeySpec {
             write!(s, " from_table={}", x).unwrap();
         }
         if let Some(x) = &lock.on_delete {
-            write!(s, " on_delete={:?}", x).unwrap();
+            write!(s, " on_delete={:?}", x.to_string()).unwrap();
         }
         if let Some(x) = &lock.on_update {
-            write!(s, " on_update={:?}", x).unwrap();
+            write!(s, " on_update={:?}", x.to_string()).unwrap();
         }
         write!(s, ">").unwrap();
 

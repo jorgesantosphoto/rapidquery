@@ -1230,11 +1230,8 @@ class TableName:
     def copy(self) -> Self: ...
     def __repr__(self) -> str: ...
 
-FOREIGN_KEY_ACTION_CASCADE: typing.Final[int]
-FOREIGN_KEY_ACTION_RESTRICT: typing.Final[int]
-FOREIGN_KEY_ACTION_SET_NULL: typing.Final[int]
-FOREIGN_KEY_ACTION_NO_ACTION: typing.Final[int]
-FOREIGN_KEY_ACTION_SET_DEFAULT: typing.Final[int]
+
+_ForeignKeyActions = typing.Literal["CASCADE", "NO ACTION", "RESTRICT", "SET DEFAULT", "SET NULL"]
 
 class ForeignKeySpec:
     """
@@ -1258,7 +1255,7 @@ class ForeignKeySpec:
     set it again:
 
         fk.from_columns.append("file_id") # Wrong ❌
-        fk.from_columns = fk.from_columns + ["file_id"] # Correct ✅
+        fk.from_columns = ["id", "name"] # Correct ✅
     """
 
     to_columns: typing.List[str]
@@ -1269,7 +1266,7 @@ class ForeignKeySpec:
     set it again:
 
         fk.to_columns.append("file_id") # Wrong ❌
-        fk.to_columns = fk.to_columns + ["file_id"] # Correct ✅
+        fk.to_columns = ["id", "name"] # Correct ✅
     """
 
     to_table: TableName
@@ -1281,10 +1278,10 @@ class ForeignKeySpec:
     name: typing.Optional[str]
     """The name of the foreign key constraint."""
 
-    on_delete: typing.Optional[int]
+    on_delete: typing.Optional[_ForeignKeyActions]
     """Action to take when referenced row is deleted."""
 
-    on_update: typing.Optional[int]
+    on_update: typing.Optional[_ForeignKeyActions]
     """Action to take when referenced row is updated."""
 
     def __new__(
@@ -1294,9 +1291,11 @@ class ForeignKeySpec:
         to_table: typing.Union[TableName, str],
         from_table: typing.Union[TableName, str, None] = ...,
         name: typing.Optional[str] = ...,
-        on_delete: typing.Optional[int] = ...,
-        on_update: typing.Optional[int] = ...,
+        on_delete: typing.Optional[_ForeignKeyActions] = ...,
+        on_update: typing.Optional[_ForeignKeyActions] = ...,
     ) -> None: ...
+    def __copy__(self) -> Self: ...
+    def copy(self) -> Self: ...
     def __repr__(self) -> str: ...
 
 
