@@ -1303,7 +1303,7 @@ class ForeignKeySpec:
 INDEX_ORDER_ASC: typing.Final[int]
 INDEX_ORDER_DESC: typing.Final[int]
 
-class IndexColumnDef:
+class IndexColumn:
     """
     Defines a column within an index specification.
 
