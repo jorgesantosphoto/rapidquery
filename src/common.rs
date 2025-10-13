@@ -285,11 +285,11 @@ impl PyTableName {
 
                 Ok(pyo3::Py::new(value.py(), tb)?.into_any())
             } else {
-                return Err(typeerror!(
+                Err(typeerror!(
                     "expected TableName or str, got {:?}",
                     value.py(),
                     value.as_ptr()
-                ));
+                ))
             }
         }
     }
@@ -300,13 +300,11 @@ impl PyTableName {
     #[new]
     #[pyo3(signature=(name, schema=None, database=None))]
     fn new(name: String, schema: Option<String>, database: Option<String>) -> Self {
-        let slf = Self {
+        Self {
             name: sea_query::Alias::new(name).into_iden(),
             schema: schema.map(|x| sea_query::Alias::new(x).into_iden()),
             database: database.map(|x| sea_query::Alias::new(x).into_iden()),
-        };
-
-        slf
+        }
     }
 
     #[classmethod]

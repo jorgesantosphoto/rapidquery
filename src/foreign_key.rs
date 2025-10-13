@@ -113,6 +113,7 @@ impl PyForeignKeySpec {
     }
 
     #[getter]
+    #[allow(clippy::wrong_self_convention)]
     fn from_table(&self, py: pyo3::Python) -> Option<pyo3::Py<pyo3::PyAny>> {
         self.inner
             .lock()
@@ -144,6 +145,7 @@ impl PyForeignKeySpec {
     }
 
     #[getter]
+    #[allow(clippy::wrong_self_convention)]
     fn from_columns(&self) -> Vec<String> {
         self.inner.lock().from_columns.clone()
     }

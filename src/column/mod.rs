@@ -79,6 +79,7 @@ impl PyColumn {
             stored_generated=false,
         )
     )]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         name: String,
         r#type: &pyo3::Bound<'_, pyo3::PyAny>,
@@ -202,7 +203,7 @@ impl PyColumn {
 
     #[getter]
     fn nullable(&self) -> bool {
-        (self.inner.lock().options & (ColumnOptions::NotNull as u8)) <= 0
+        (self.inner.lock().options & (ColumnOptions::NotNull as u8)) == 0
     }
 
     #[setter]
@@ -219,7 +220,7 @@ impl PyColumn {
 
     #[getter]
     fn unique(&self) -> bool {
-        (self.inner.lock().options & (ColumnOptions::NotNull as u8)) <= 0
+        (self.inner.lock().options & (ColumnOptions::NotNull as u8)) == 0
     }
 
     #[setter]
