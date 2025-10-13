@@ -58,6 +58,9 @@ mod _lib {
     #[pymodule_export]
     use super::backend::{PyBackendMeta, PyMySQLBackend, PyPostgreSQLBackend, PySQLiteBackend};
 
+    #[pymodule_export]
+    use super::index::PyIndex;
+
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         m.add("INTERVAL_YEAR", sea_query::PgInterval::Year as u8)?;

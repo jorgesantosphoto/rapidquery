@@ -120,7 +120,7 @@ impl PyForeignKeySpec {
 
         let to_table: pyo3::Py<pyo3::PyAny> = crate::common::PyTableName::from_pyobject(to_table)?;
 
-        let from_table: Option<pyo3::Py<pyo3::PyAny>> = unsafe {
+        let from_table: Option<pyo3::Py<pyo3::PyAny>> = {
             match from_table {
                 Some(from_table) => Some(crate::common::PyTableName::from_pyobject(from_table)?),
                 None => None,

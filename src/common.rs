@@ -193,9 +193,9 @@ impl PyColumnRef {
 #[pyo3::pyclass(module = "rapidquery._lib", name = "TableName", frozen)]
 #[derive(Clone)]
 pub struct PyTableName {
-    pub(crate) name: sea_query::DynIden,
-    pub(crate) schema: Option<sea_query::DynIden>,
-    pub(crate) database: Option<sea_query::DynIden>,
+    pub name: sea_query::DynIden,
+    pub schema: Option<sea_query::DynIden>,
+    pub database: Option<sea_query::DynIden>,
 }
 
 impl sea_query::IntoTableRef for PyTableName {
@@ -374,9 +374,9 @@ impl PyTableName {
 #[pyo3::pyclass(module = "rapidquery._lib", name = "IndexColumn", frozen)]
 #[derive(Clone)]
 pub struct PyIndexColumn {
-    pub(crate) name: String,
-    pub(crate) prefix: Option<u32>,
-    pub(crate) order: Option<sea_query::IndexOrder>,
+    pub name: String,
+    pub prefix: Option<u32>,
+    pub order: Option<sea_query::IndexOrder>,
 }
 
 impl sea_query::IntoIndexColumn for PyIndexColumn {
@@ -390,15 +390,13 @@ impl sea_query::IntoIndexColumn for PyIndexColumn {
     }
 }
 
-impl FromStr for PyIndexColumn {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            name: s.to_owned(),
+impl From<&str> for PyIndexColumn {
+    fn from(value: &str) -> Self {
+        Self {
+            name: value.to_owned(),
             prefix: None,
             order: None,
-        })
+        }
     }
 }
 

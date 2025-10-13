@@ -686,7 +686,7 @@ class ColumnRef:
     schema: typing.Optional[str]
 
     def __new__(
-        self,
+        cls,
         name: str,
         table: typing.Optional[str] = ...,
         schema: typing.Optional[str] = ...,
@@ -1030,7 +1030,7 @@ class Column:
     """Comment describing this column."""
 
     def __new__(
-        self,
+        cls,
         name: str,
         type: ColumnTypeMeta,
         primary_key: bool = ...,
@@ -1217,7 +1217,7 @@ class TableName:
     """The database containing the table, if specified."""
 
     def __new__(
-        self,
+        cls,
         name: str,
         schema: typing.Optional[str] = ...,
         database: typing.Optional[str] = ...,
@@ -1285,7 +1285,7 @@ class ForeignKeySpec:
     """Action to take when referenced row is updated."""
 
     def __new__(
-        self,
+        cls,
         from_columns: typing.Sequence[str],
         to_columns: typing.Sequence[str],
         to_table: typing.Union[TableName, str],
@@ -1325,9 +1325,59 @@ class IndexColumn:
     """Sort order for this column (INDEX_ORDER_ASC or INDEX_ORDER_DESC)."""
 
     def __new__(
-        self, name: str, prefix: typing.Optional[int] = ..., order: typing.Optional[int] = ...
+        cls, name: str, prefix: typing.Optional[int] = ..., order: typing.Optional[int] = ...
     ) -> Self: ...
     def __copy__(self) -> Self: ...
     def copy(self) -> Self: ...
     def __repr__(self) -> str: ...
 
+
+_IndexType = typing.Literal["BTREE", "FULL TEXT", "HASH"]
+
+
+class Index:
+    name: str
+    """The name of the index."""
+
+    table: typing.Optional[TableName]
+    """The table on which to create the index."""
+
+    if_not_exists: bool
+    """Whether to use IF NOT EXISTS clause."""
+
+    primary: bool
+    """Whether this is a primary key constraint."""
+
+    unique: bool
+    """Whether this is a unique constraint."""
+
+    nulls_not_distinct: bool
+    """Whether NULL values should be considered equal for uniqueness."""
+
+    include: typing.Sequence[str]
+    """Additional columns to include in the index for covering queries."""
+
+    columns: typing.Sequence[typing.Union[IndexColumn, str]]
+    """The columns that make up this index."""
+
+    index_type: typing.Optional[typing.Union[str, _IndexType]]
+    """The type/algorithm for this index."""
+
+    where: typing.Optional[Expr]
+
+    def __new__(
+        cls,
+        columns: typing.Sequence[typing.Union[IndexColumn, str]],
+        name: typing.Optional[str] = ...,
+        table: typing.Union[str, TableName] = ...,
+        if_not_exists: bool = ...,
+        primary: bool = ...,
+        unique: bool = ...,
+        nulls_not_distinct: bool = ...,
+        include: typing.Sequence[str] = ...,
+        index_type: typing.Union[str, _IndexType] = ...,
+        where: typing.Optional[Expr] = ...,
+    ) -> Self: ...
+    def __copy__(self) -> Self: ...
+    def copy(self) -> Self: ...
+    def __repr__(self) -> str: ...

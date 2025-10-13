@@ -128,9 +128,7 @@ impl TryFrom<pyo3::Bound<'_, pyo3::PyAny>> for PyExpr {
 impl PyExpr {
     #[new]
     #[pyo3(signature=(value, /))]
-    fn __new__(
-        value: pyo3::Bound<'_, pyo3::PyAny>,
-    ) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
+    fn new(value: pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         // Go fast path when value is PyExpr
         if let Ok(x) = value.cast::<Self>() {
             return Ok(pyo3::PyClassInitializer::from(x.clone()));
