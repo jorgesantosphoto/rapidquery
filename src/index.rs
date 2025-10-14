@@ -398,6 +398,7 @@ impl PyIndex {
     fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_statement(backend.py());
+        drop(lock);
 
         build_schema!(
             crate::backend::into_schema_builder => backend => build_any(stmt)
@@ -450,6 +451,166 @@ impl PyIndex {
             write!(s, " index_type={x}").unwrap();
         }
 
+        write!(s, ">").unwrap();
+
+        unsafe { String::from_utf8_unchecked(s) }
+    }
+}
+
+pub struct DropIndexInner {
+    pub name: String,
+    pub table: Option<pyo3::Py<pyo3::PyAny>>,
+    pub if_exists: bool,
+}
+
+impl DropIndexInner {
+    pub fn clone_ref(&self, py: pyo3::Python) -> Self {
+        Self {
+            name: self.name.clone(),
+            table: self.table.as_ref().map(|x| x.clone_ref(py)),
+            if_exists: self.if_exists,
+        }
+    }
+
+    pub(crate) fn as_statement(&self, py: pyo3::Python) -> sea_query::IndexDropStatement {
+        let mut stmt = sea_query::IndexDropStatement::new();
+
+        stmt.name(&self.name);
+
+        if let Some(x) = &self.table {
+            #[cfg(not(debug_assertions))]
+            let x = unsafe { x.bind(py).cast_unchecked::<crate::common::PyTableName>() };
+
+            #[cfg(debug_assertions)]
+            let x = x.bind(py).cast::<crate::common::PyTableName>().unwrap();
+
+            let x = x.get();
+
+            stmt.table(x.clone());
+        }
+
+        if self.if_exists {
+            stmt.if_exists();
+        }
+
+        stmt
+    }
+}
+
+#[pyo3::pyclass(module = "rapidquery._lib", name = "DropIndex", frozen)]
+pub struct PyDropIndex {
+    pub inner: parking_lot::Mutex<DropIndexInner>,
+}
+
+#[pyo3::pymethods]
+impl PyDropIndex {
+    #[new]
+    #[pyo3(signature=(name, table=None, if_exists=false))]
+    fn new(
+        name: String,
+        table: Option<&pyo3::Bound<'_, pyo3::PyAny>>,
+        if_exists: bool,
+    ) -> pyo3::PyResult<Self> {
+        let table: Option<pyo3::Py<pyo3::PyAny>> = {
+            match table {
+                Some(table) => Some(crate::common::PyTableName::from_pyobject(table)?),
+                None => None,
+            }
+        };
+
+        let inner = DropIndexInner {
+            name,
+            table,
+            if_exists,
+        };
+
+        Ok(Self {
+            inner: parking_lot::Mutex::new(inner),
+        })
+    }
+
+    #[getter]
+    fn name(&self) -> String {
+        let lock = self.inner.lock();
+        lock.name.clone()
+    }
+
+    #[setter]
+    fn set_name(&self, val: String) {
+        let mut lock = self.inner.lock();
+        lock.name = val;
+    }
+
+    #[getter]
+    fn table(&self, py: pyo3::Python) -> Option<pyo3::Py<pyo3::PyAny>> {
+        let lock = self.inner.lock();
+        lock.table.as_ref().map(|x| x.clone_ref(py))
+    }
+
+    #[setter]
+    fn set_table(&self, val: Option<&pyo3::Bound<'_, pyo3::PyAny>>) -> pyo3::PyResult<()> {
+        let val: Option<pyo3::Py<pyo3::PyAny>> = {
+            match val {
+                Some(val) => Some(crate::common::PyTableName::from_pyobject(val)?),
+                None => None,
+            }
+        };
+
+        let mut lock = self.inner.lock();
+        lock.table = val;
+        Ok(())
+    }
+
+    #[getter]
+    fn if_exists(slf: pyo3::PyRef<'_, Self>) -> bool {
+        slf.inner.lock().if_exists
+    }
+
+    #[setter]
+    fn set_if_exists(slf: pyo3::PyRef<'_, Self>, val: bool) {
+        let mut lock = slf.inner.lock();
+        lock.if_exists = val;
+    }
+
+    fn __copy__(&self, py: pyo3::Python) -> Self {
+        let lock = self.inner.lock();
+
+        Self {
+            inner: parking_lot::Mutex::new(lock.clone_ref(py)),
+        }
+    }
+
+    fn copy(&self, py: pyo3::Python) -> Self {
+        let lock = self.inner.lock();
+
+        Self {
+            inner: parking_lot::Mutex::new(lock.clone_ref(py)),
+        }
+    }
+
+    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+        let lock = self.inner.lock();
+        let stmt = lock.as_statement(backend.py());
+        drop(lock);
+
+        build_schema!(
+            crate::backend::into_schema_builder => backend => build_any(stmt)
+        )
+    }
+
+    fn __repr__(&self) -> String {
+        use std::io::Write;
+
+        let lock = self.inner.lock();
+        let mut s = Vec::with_capacity(50);
+
+        write!(s, "<DropIndex {:?}", lock.name).unwrap();
+        if let Some(x) = &lock.table {
+            write!(s, " table={}", x).unwrap();
+        }
+        if lock.if_exists {
+            write!(s, " if_exists=True").unwrap();
+        }
         write!(s, ">").unwrap();
 
         unsafe { String::from_utf8_unchecked(s) }

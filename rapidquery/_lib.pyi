@@ -117,7 +117,9 @@ class _PrecisionScaleColumnType(ColumnTypeMeta[T]):
     This is an internal base class for numeric types like DECIMAL and NUMERIC
     that require both precision (total digits) and scale (decimal places) specification.
     """
-    def __new__(cls, precision_scale: typing.Optional[typing.Tuple[int, int]] = ...) -> Self: ...
+    def __new__(
+        cls, precision_scale: typing.Optional[typing.Tuple[int, int]] = ...
+    ) -> Self: ...
     @property
     def precision_scale(self) -> typing.Optional[typing.Tuple[int, int]]:
         """The total number of significant digits."""
@@ -578,7 +580,9 @@ class AdaptedValue:
     """
 
     @typing.overload
-    def __new__(cls, val: typing.Any, type: typing.Optional[ColumnTypeMeta] = None) -> Self:
+    def __new__(
+        cls, val: typing.Any, type: typing.Optional[ColumnTypeMeta] = None
+    ) -> Self:
         """
         Validates and adapts your value for Rust and SQL, then creates a new `AdaptedValue` instance.
 
@@ -862,7 +866,8 @@ class Expr:
 
     @classmethod
     def tuple(
-        cls, values: typing.Union[typing.Set[Self], typing.List[Self], typing.Tuple[Self]]
+        cls,
+        values: typing.Union[typing.Set[Self], typing.List[Self], typing.Tuple[Self]],
     ) -> Self:
         """
         Create a tuple expression for tuple comparisons.
@@ -1980,7 +1985,7 @@ class Column:
         Create NOT IN expression with this column.
         """
         ...
-    
+
     def __copy__(self) -> Self:
         """
         Create a shallow copy of this Column.
@@ -2105,7 +2110,9 @@ class TableName:
         """
         ...
 
-_ForeignKeyActions = typing.Literal["CASCADE", "NO ACTION", "RESTRICT", "SET DEFAULT", "SET NULL"]
+_ForeignKeyActions = typing.Literal[
+    "CASCADE", "NO ACTION", "RESTRICT", "SET DEFAULT", "SET NULL"
+]
 
 class ForeignKeySpec:
     """
@@ -2133,9 +2140,9 @@ class ForeignKeySpec:
     from_columns: typing.List[str]
     """
     The column names in the child table that reference the parent.
-    
+
     Note: This attribute is immutable. To modify it, create a new list:
-    
+
         fk.from_columns.append("file_id")  # Wrong ❌
         fk.from_columns = ["id", "name"]   # Correct ✅
     """
@@ -2143,10 +2150,10 @@ class ForeignKeySpec:
     to_columns: typing.List[str]
     """
     The column names in the parent table being referenced.
-    
+
     Note: This attribute is immutable. To modify it, create a new list:
-    
-        fk.to_columns.append("file_id")  # Wrong ❌  
+
+        fk.to_columns.append("file_id")  # Wrong ❌
         fk.to_columns = ["id", "name"]   # Correct ✅
     """
 
@@ -2247,7 +2254,10 @@ class IndexColumn:
     """Sort order for this column (INDEX_ORDER_ASC or INDEX_ORDER_DESC)."""
 
     def __new__(
-        cls, name: str, prefix: typing.Optional[int] = ..., order: typing.Optional[int] = ...
+        cls,
+        name: str,
+        prefix: typing.Optional[int] = ...,
+        order: typing.Optional[int] = ...,
     ) -> Self:
         """
         Create a new IndexColumn.
@@ -2383,7 +2393,6 @@ class Index:
         """
         ...
 
-
     def build(self, backend: BackendMeta) -> str:
         """
         Build a CREATE INDEX SQL string representation.
@@ -2399,5 +2408,71 @@ class Index:
     def __repr__(self) -> str:
         """
         Return a string representation of the Index.
+        """
+        ...
+
+class DropIndex:
+    """
+    Represents a DROP INDEX SQL statement.
+
+    Builds index deletion statements with support for:
+    - Conditional deletion (IF EXISTS)
+    - Table-specific index dropping (for databases that require it)
+    - Proper error handling for non-existent indexes
+
+    Example:
+
+        >>> DropIndex(
+        ...     name="idx_user_name",
+        ...     if_exists=True
+        ... )
+    """
+
+    name: str
+    """The name of the index to drop."""
+
+    table: typing.Optional[TableName]
+    """The table from which to drop the index."""
+
+    if_exists: bool
+    """Whether to use IF EXISTS clause to avoid errors."""
+
+    def __new__(
+        self,
+        name: str = ...,
+        table: typing.Optional[TableName] = ...,
+        if_exists: bool = ...,
+    ) -> Self:
+        """
+        Create a new DropIndex.
+
+        Args:
+            name: The index name
+            table: The table from which to drop the index (optional)
+            if_exists: Whether to use IF EXISTS
+
+        Returns:
+            A new Index instance
+        """
+        ...
+
+    def __copy__(self) -> Self:
+        """
+        Create a shallow copy of this DropIndex.
+        """
+        ...
+
+    def copy(self) -> Self:
+        """
+        Create a copy of this DropIndex.
+
+        Returns:
+            A new DropIndex instance with the same values
+        """
+        ...
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the DropIndex.
         """
         ...
