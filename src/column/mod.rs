@@ -20,7 +20,6 @@ enum ColumnOptions {
 }
 
 pub struct ColumnFields {
-    // TODO: add table name here
     pub name: String,
     pub r#type: pyo3::Py<pyo3::PyAny>,
     pub options: u8,
@@ -28,13 +27,21 @@ pub struct ColumnFields {
     pub generated: Option<pyo3::Py<pyo3::PyAny>>,
     pub extra: Option<String>,
     pub comment: Option<String>,
+    pub table: Option<sea_query::DynIden>,
 }
 
 impl ColumnFields {
     #[inline]
     #[optimize(speed)]
     pub fn as_column_ref(&self) -> sea_query::ColumnRef {
-        sea_query::ColumnRef::Column(sea_query::Alias::new(&self.name).into_iden())
+        if let Some(x) = &self.table {
+            sea_query::ColumnRef::TableColumn(
+                x.clone(),
+                sea_query::Alias::new(&self.name).into_iden(),
+            )
+        } else {
+            sea_query::ColumnRef::Column(sea_query::Alias::new(&self.name).into_iden())
+        }
     }
 
     #[inline]
@@ -52,6 +59,7 @@ impl ColumnFields {
             generated: self.generated.as_ref().map(|x| x.clone_ref(py)),
             extra: self.extra.clone(),
             comment: self.comment.clone(),
+            table: self.table.clone(),
         }
     }
 }
@@ -147,6 +155,7 @@ impl PyColumn {
             generated: generated_expr.map(|x| pyo3::Py::new(py, x).unwrap().into_any()),
             extra,
             comment,
+            table: None,
         };
 
         Ok(PyColumn {
@@ -682,7 +691,12 @@ impl PyColumn {
         let lock = self.inner.lock();
 
         let mut s: Vec<u8> = Vec::with_capacity(20);
-        write!(s, "<Column {:?} type={}", lock.name, lock.r#type).unwrap();
+
+        if let Some(x) = &lock.table {
+            write!(s, "<Column {:?}.{:?} type={}", x.to_string(), lock.name, lock.r#type).unwrap();
+        } else {
+            write!(s, "<Column {:?} type={}", lock.name, lock.r#type).unwrap();
+        }
 
         if lock.options & (ColumnOptions::PrimaryKey as u8) > 0 {
             write!(s, " primary_key=True").unwrap();

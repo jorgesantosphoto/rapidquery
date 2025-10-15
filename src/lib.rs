@@ -19,6 +19,7 @@ mod common;
 mod expression;
 mod foreign_key;
 mod index;
+mod table;
 mod typeref;
 
 /// RapidQuery core module written in Rust
@@ -54,12 +55,16 @@ mod _lib {
 
     #[pymodule_export]
     use super::foreign_key::PyForeignKeySpec;
-
+    
     #[pymodule_export]
     use super::backend::{PyBackendMeta, PyMySQLBackend, PyPostgreSQLBackend, PySQLiteBackend};
 
     #[pymodule_export]
     use super::index::{PyDropIndex, PyIndex};
+
+    #[pymodule_export]
+    use super::table::PyTable;
+
 
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

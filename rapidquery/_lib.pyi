@@ -684,9 +684,6 @@ class AdaptedValue:
 
     def __repr__(self) -> str: ...
 
-import typing
-from typing import Self
-
 class ColumnRef:
     """
     Represents a reference to a database column with optional table and schema qualification.
@@ -2475,4 +2472,25 @@ class DropIndex:
         """
         Return a string representation of the DropIndex.
         """
+        ...
+
+
+class Table:
+    def __new__(
+        cls,
+        name: typing.Union[str, TableName],
+        columns: typing.Sequence[Column],
+        indexes: typing.Sequence[Index] = ...,
+        foreign_keys: typing.Sequence[ForeignKeySpec] = ...,
+        checks: typing.Sequence[Expr] = ...,
+        if_not_exists: bool = ...,
+        temporary: bool = ...,
+        comment: typing.Optional[str] = ...,
+        engine: typing.Optional[str] = ...,
+        collate: typing.Optional[str] = ...,
+        character_set: typing.Optional[str] = ...,
+        extra: typing.Optional[str] = ...,
+    ) -> Self: ...
+
+    def __repr__(self) -> str:
         ...

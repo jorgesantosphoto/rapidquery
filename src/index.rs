@@ -448,7 +448,7 @@ impl PyIndex {
             write!(s, " include={:?}", lock.include).unwrap();
         }
         if let Some(x) = &lock.r#where {
-            write!(s, " index_type={x}").unwrap();
+            write!(s, " where={x}").unwrap();
         }
 
         write!(s, ">").unwrap();
