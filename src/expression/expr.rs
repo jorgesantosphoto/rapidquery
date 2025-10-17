@@ -62,7 +62,13 @@ impl PyExpr {
         unsafe {
             let type_ptr = pyo3::ffi::Py_TYPE(value.as_ptr());
 
-            if type_ptr == crate::typeref::ADAPTED_VALUE_TYPE {
+            if type_ptr == crate::typeref::EXPR_TYPE {
+                let value = value.cast_into_unchecked::<Self>();
+
+                Ok(Self {
+                    inner: value.get().inner.clone(),
+                })
+            } else if type_ptr == crate::typeref::ADAPTED_VALUE_TYPE {
                 let value = value.cast_into_unchecked::<crate::adaptation::PyAdaptedValue>();
 
                 Ok(Self::from_adapted_value(value.py(), value.get()))
@@ -87,12 +93,6 @@ impl PyExpr {
                 }
 
                 Ok(Self::from_tuple(arr.into_iter().map(|x| x.inner.clone())))
-            } else if type_ptr == crate::typeref::EXPR_TYPE {
-                let value = value.cast_into_unchecked::<Self>();
-
-                Ok(Self {
-                    inner: value.get().inner.clone(),
-                })
             } else {
                 let py = value.py();
                 let mut value = crate::adaptation::ReturnableValue::from_bound(value, r#type)?;
@@ -306,247 +306,104 @@ impl PyExpr {
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::eq(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::eq(slf.inner.clone(), other.inner).into())
     }
 
     fn __ne__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::ne(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::ne(slf.inner.clone(), other.inner).into())
     }
 
     fn __gt__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::gt(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::gt(slf.inner.clone(), other.inner).into())
     }
 
     fn __ge__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::gte(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::gte(slf.inner.clone(), other.inner).into())
     }
 
     fn __lt__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::lt(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::lt(slf.inner.clone(), other.inner).into())
     }
 
     fn __le__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::lte(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::lte(slf.inner.clone(), other.inner).into())
     }
 
     fn __add__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::add(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::add(slf.inner.clone(), other.inner).into())
     }
 
     fn __sub__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::sub(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::sub(slf.inner.clone(), other.inner).into())
     }
 
     fn __and__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::bit_and(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::bit_and(slf.inner.clone(), other.inner).into())
     }
 
     fn __or__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::bit_or(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::or(slf.inner.clone(), other.inner).into())
     }
 
     fn __truediv__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::div(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::div(slf.inner.clone(), other.inner).into())
     }
 
     fn is_<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::is(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::is(slf.inner.clone(), other.inner).into())
     }
 
     fn is_not<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::is_not(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::is_not(slf.inner.clone(), other.inner).into())
     }
 
     fn is_null(slf: pyo3::PyRef<'_, Self>) -> Self {
@@ -565,312 +422,134 @@ impl PyExpr {
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(
-                sea_query::ExprTrait::left_shift(slf.inner.clone(), other.get().inner.clone())
-                    .into(),
-            )
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::left_shift(slf.inner.clone(), other.inner).into())
     }
 
     fn __rshift__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(
-                sea_query::ExprTrait::right_shift(slf.inner.clone(), other.get().inner.clone())
-                    .into(),
-            )
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::right_shift(slf.inner.clone(), other.inner).into())
     }
 
     fn __mod__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::modulo(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::modulo(slf.inner.clone(), other.inner).into())
     }
 
     fn __mul__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::mul(slf.inner.clone(), other.get().inner.clone()).into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::ExprTrait::mul(slf.inner.clone(), other.inner).into())
     }
 
     fn sqlite_matches<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::sqlite::SqliteExpr::matches(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(
+            sea_query::extension::sqlite::SqliteExpr::matches(slf.inner.clone(), other.inner)
+                .into(),
+        )
     }
 
     fn sqlite_glob<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::sqlite::SqliteExpr::glob(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::extension::sqlite::SqliteExpr::glob(slf.inner.clone(), other.inner).into())
     }
 
     fn sqlite_get_json_field<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::sqlite::SqliteExpr::get_json_field(
+        let other = Self::try_from(other.clone())?;
+        Ok(
+            sea_query::extension::sqlite::SqliteExpr::get_json_field(
                 slf.inner.clone(),
-                other.get().inner.clone(),
+                other.inner,
             )
-            .into())
-        }
+            .into(),
+        )
     }
 
     fn sqlite_cast_json_field<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::sqlite::SqliteExpr::cast_json_field(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::extension::sqlite::SqliteExpr::cast_json_field(
+            slf.inner.clone(),
+            other.inner,
+        )
+        .into())
     }
 
     fn pg_concat<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::postgres::PgExpr::concat(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::extension::postgres::PgExpr::concat(slf.inner.clone(), other.inner).into())
     }
 
     fn pg_contained<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::postgres::PgExpr::contained(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(
+            sea_query::extension::postgres::PgExpr::contained(slf.inner.clone(), other.inner)
+                .into(),
+        )
     }
 
     fn pg_get_json_field<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::postgres::PgExpr::get_json_field(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(
+            sea_query::extension::postgres::PgExpr::get_json_field(slf.inner.clone(), other.inner)
+                .into(),
+        )
     }
 
     fn pg_cast_json_field<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::postgres::PgExpr::cast_json_field(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(
+            sea_query::extension::postgres::PgExpr::cast_json_field(slf.inner.clone(), other.inner)
+                .into(),
+        )
     }
 
     fn pg_contains<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::postgres::PgExpr::contains(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::extension::postgres::PgExpr::contains(slf.inner.clone(), other.inner).into())
     }
 
     fn pg_matches<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(other.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!(
-                    "expected Expr, got {:?}",
-                    other.py(),
-                    other.as_ptr()
-                ));
-            }
-
-            let other = other.cast_unchecked::<Self>();
-
-            Ok(sea_query::extension::postgres::PgExpr::matches(
-                slf.inner.clone(),
-                other.get().inner.clone(),
-            )
-            .into())
-        }
+        let other = Self::try_from(other.clone())?;
+        Ok(sea_query::extension::postgres::PgExpr::matches(slf.inner.clone(), other.inner).into())
     }
 
     #[pyo3(signature=(pattern, escape=None))]
@@ -900,24 +579,10 @@ impl PyExpr {
         a: &pyo3::Bound<'a, pyo3::PyAny>,
         b: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(a.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!("expected Expr, got {:?}", a.py(), a.as_ptr()));
-            }
-            if pyo3::ffi::Py_TYPE(b.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!("expected Expr, got {:?}", b.py(), b.as_ptr()));
-            }
+        let a = Self::try_from(a.clone())?;
+        let b = Self::try_from(b.clone())?;
 
-            let a = a.cast_unchecked::<Self>();
-            let b = b.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::between(
-                slf.inner.clone(),
-                a.get().inner.clone(),
-                b.get().inner.clone(),
-            )
-            .into())
-        }
+        Ok(sea_query::ExprTrait::between(slf.inner.clone(), a.inner, b.inner).into())
     }
 
     fn not_between<'a>(
@@ -925,24 +590,10 @@ impl PyExpr {
         a: &pyo3::Bound<'a, pyo3::PyAny>,
         b: &pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<Self> {
-        unsafe {
-            if pyo3::ffi::Py_TYPE(a.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!("expected Expr, got {:?}", a.py(), a.as_ptr()));
-            }
-            if pyo3::ffi::Py_TYPE(b.as_ptr()) == crate::typeref::EXPR_TYPE {
-                return Err(typeerror!("expected Expr, got {:?}", b.py(), b.as_ptr()));
-            }
+        let a = Self::try_from(a.clone())?;
+        let b = Self::try_from(b.clone())?;
 
-            let a = a.cast_unchecked::<Self>();
-            let b = b.cast_unchecked::<Self>();
-
-            Ok(sea_query::ExprTrait::not_between(
-                slf.inner.clone(),
-                a.get().inner.clone(),
-                b.get().inner.clone(),
-            )
-            .into())
-        }
+        Ok(sea_query::ExprTrait::not_between(slf.inner.clone(), a.inner, b.inner).into())
     }
 
     fn in_(slf: pyo3::PyRef<'_, Self>, other: Vec<pyo3::Py<Self>>) -> Self {
