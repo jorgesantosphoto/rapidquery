@@ -1047,7 +1047,6 @@ class Expr:
         """
         ...
 
-    def not_(self) -> Self: ...
     def is_(self, other: typing.Any) -> Self:
         """
         Create an IS comparison expression (for NULL comparisons).
@@ -1658,6 +1657,16 @@ def any(arg1: Expr, *args: Expr) -> Expr:
     Example:
         >>> any(Expr.col("status") == "pending", Expr.col("status") == "approved")
         # Equivalent to: status = 'pending' OR status = 'approved'
+    """
+    ...
+
+def not_(arg1: Expr) -> Expr:
+    """
+    Create a logical NOT.
+
+    Example:
+        >>> not_(Expr.col("status") == "pending", Expr.col("status"))
+        # Equivalent to: NOT status = 'pending'
     """
     ...
 

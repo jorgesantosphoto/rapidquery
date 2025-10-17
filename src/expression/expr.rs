@@ -414,10 +414,6 @@ impl PyExpr {
         sea_query::ExprTrait::is_not_null(slf.inner.clone()).into()
     }
 
-    fn not_(slf: pyo3::PyRef<'_, Self>) -> Self {
-        sea_query::ExprTrait::not(slf.inner.clone()).into()
-    }
-
     fn __lshift__<'a>(
         slf: pyo3::PyRef<'a, Self>,
         other: &pyo3::Bound<'a, pyo3::PyAny>,

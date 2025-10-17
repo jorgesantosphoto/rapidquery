@@ -8,7 +8,8 @@ help:
 	@echo ""
 	@echo -e "    build-dev     build source"
 	@echo -e "    build-prod    build source (release mode)"
-	@echo -e "    test          clippy and test rust code"
+	@echo -e "    test          run clippy and pytest in debug mode"
+	@echo -e "    test-full     run clippy and pytest in debug mode and release mode"
 	@echo -e "    fmt           format rust and python code"
 
 build-dev:
@@ -19,10 +20,16 @@ build-prod:
 
 test:
 	cargo clippy
+	$(BUILD_CMD) --uv
 	pytest -s -vv
 	-rm -rf .pytest_cache
 	-ruff check .
 	ruff clean
+
+test-full: test
+	$(BUILD_CMD) --uv --release
+	pytest -s -vv
+	-rm -rf .pytest_cache
 
 fmt:
 	cargo fmt

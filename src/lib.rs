@@ -49,7 +49,7 @@ mod _lib {
     use super::common::{PyAsteriskType, PyColumnRef, PyIndexColumn, PyTableName};
 
     #[pymodule_export]
-    use super::expression::{all, any, PyExpr, PyFunctionCall};
+    use super::expression::{all, any, not_, PyExpr, PyFunctionCall};
 
     #[pymodule_export]
     use super::column::PyColumn;

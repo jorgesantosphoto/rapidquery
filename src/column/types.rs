@@ -130,6 +130,10 @@ macro_rules! impl_column_type {
                 }
 
                 fn __eq__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+                    if slf.as_ptr() == other.as_ptr() {
+                        return Ok(true);
+                    }
+
                     let other = other
                         .extract::<pyo3::PyRef<'_, Self>>(slf.py())
                         .map_err(
@@ -141,11 +145,14 @@ macro_rules! impl_column_type {
                             )
                         )?;
 
-                    Ok(slf.as_ptr() == other.as_ptr()
-                        || slf.length.load(std::sync::atomic::Ordering::Relaxed) == other.length.load(std::sync::atomic::Ordering::Relaxed))
+                    Ok(slf.length.load(std::sync::atomic::Ordering::Relaxed) == other.length.load(std::sync::atomic::Ordering::Relaxed))
                 }
 
                 fn __ne__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+                    if slf.as_ptr() == other.as_ptr() {
+                        return Ok(false);
+                    }
+
                     let other = other
                         .extract::<pyo3::PyRef<'_, Self>>(slf.py())
                         .map_err(
@@ -157,12 +164,14 @@ macro_rules! impl_column_type {
                             )
                         )?;
 
-                    Ok(slf.as_ptr() == other.as_ptr()
-                        && slf.length.load(std::sync::atomic::Ordering::Relaxed) != other.length.load(std::sync::atomic::Ordering::Relaxed))
+                    Ok(slf.length.load(std::sync::atomic::Ordering::Relaxed) != other.length.load(std::sync::atomic::Ordering::Relaxed))
                 }
 
                 fn __repr__(&self) -> String {
-                    format!("<{} length={:?}>", $pyname, self.length())
+                    match self.length() {
+                        Some(x) => format!("<{} length={:?}>", $pyname, x),
+                        None => format!("<{} length=None>", $pyname),
+                    }
                 }
             }
 
@@ -235,6 +244,10 @@ macro_rules! impl_column_type {
                 }
 
                 fn __eq__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+                    if slf.as_ptr() == other.as_ptr() {
+                        return Ok(true);
+                    }
+
                     let other = other
                         .extract::<pyo3::PyRef<'_, Self>>(slf.py())
                         .map_err(
@@ -246,10 +259,14 @@ macro_rules! impl_column_type {
                             )
                         )?;
 
-                    Ok(slf.as_ptr() == other.as_ptr() || slf.precision_scale() == other.precision_scale())
+                    Ok(slf.precision_scale() == other.precision_scale())
                 }
 
                 fn __ne__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+                    if slf.as_ptr() == other.as_ptr() {
+                        return Ok(false);
+                    }
+
                     let other = other
                         .extract::<pyo3::PyRef<'_, Self>>(slf.py())
                         .map_err(
@@ -261,11 +278,14 @@ macro_rules! impl_column_type {
                             )
                         )?;
 
-                    Ok(slf.as_ptr() == other.as_ptr() && slf.precision_scale() != other.precision_scale())
+                    Ok(slf.precision_scale() != other.precision_scale())
                 }
 
                 fn __repr__(&self) -> String {
-                    format!("<{} precision_scale={:?}>", $pyname, self.precision_scale())
+                    match self.precision_scale() {
+                        Some(x) => format!("<{} precision_scale={:?}>", $pyname, x),
+                        None => format!("<{} precision_scale=None>", $pyname),
+                    }
                 }
             }
 
@@ -422,6 +442,10 @@ impl PyIntervalType {
     }
 
     fn __eq__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+        if slf.as_ptr() == other.as_ptr() {
+            return Ok(true);
+        }
+
         let other = other
             .extract::<pyo3::PyRef<'_, Self>>(slf.py())
             .map_err(|_| {
@@ -433,10 +457,15 @@ impl PyIntervalType {
                 )
             })?;
 
-        Ok(slf.as_ptr() == other.as_ptr() || *slf.inner.lock() == *other.inner.lock())
+        let x = other.inner.lock();
+        Ok(slf.inner.lock().eq(&x))
     }
 
     fn __ne__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+        if slf.as_ptr() == other.as_ptr() {
+            return Ok(false);
+        }
+
         let other = other
             .extract::<pyo3::PyRef<'_, Self>>(slf.py())
             .map_err(|_| {
@@ -448,7 +477,8 @@ impl PyIntervalType {
                 )
             })?;
 
-        Ok(slf.as_ptr() == other.as_ptr() && *slf.inner.lock() != *other.inner.lock())
+        let x = other.inner.lock();
+        Ok(slf.inner.lock().ne(&x))
     }
 
     fn __repr__(&self) -> String {
@@ -516,6 +546,10 @@ impl PyEnumType {
     }
 
     fn __eq__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+        if slf.as_ptr() == other.as_ptr() {
+            return Ok(true);
+        }
+
         let other = other
             .extract::<pyo3::PyRef<'_, Self>>(slf.py())
             .map_err(|_| {
@@ -527,10 +561,15 @@ impl PyEnumType {
                 )
             })?;
 
-        Ok(slf.as_ptr() == other.as_ptr() || *slf.inner.lock() == *other.inner.lock())
+        let x = other.inner.lock();
+        Ok(slf.inner.lock().eq(&x))
     }
 
     fn __ne__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+        if slf.as_ptr() == other.as_ptr() {
+            return Ok(false);
+        }
+
         let other = other
             .extract::<pyo3::PyRef<'_, Self>>(slf.py())
             .map_err(|_| {
@@ -542,7 +581,8 @@ impl PyEnumType {
                 )
             })?;
 
-        Ok(slf.as_ptr() == other.as_ptr() && *slf.inner.lock() != *other.inner.lock())
+        let x = other.inner.lock();
+        Ok(slf.inner.lock().ne(&x))
     }
 
     fn __repr__(slf: pyo3::PyRef<'_, Self>) -> String {
@@ -619,6 +659,10 @@ impl PyArrayType {
     }
 
     fn __eq__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+        if slf.as_ptr() == other.as_ptr() {
+            return Ok(true);
+        }
+
         let other = other
             .extract::<pyo3::PyRef<'_, Self>>(slf.py())
             .map_err(|_| {
@@ -629,10 +673,6 @@ impl PyArrayType {
                     other.as_ptr()
                 )
             })?;
-
-        if slf.as_ptr() == other.as_ptr() {
-            return Ok(true);
-        }
 
         unsafe {
             let inner1 = slf.inner.lock();
@@ -653,6 +693,10 @@ impl PyArrayType {
     }
 
     fn __ne__(slf: pyo3::PyRef<'_, Self>, other: pyo3::Py<pyo3::PyAny>) -> pyo3::PyResult<bool> {
+        if slf.as_ptr() == other.as_ptr() {
+            return Ok(false);
+        }
+
         let other = other
             .extract::<pyo3::PyRef<'_, Self>>(slf.py())
             .map_err(|_| {
@@ -663,10 +707,6 @@ impl PyArrayType {
                     other.as_ptr()
                 )
             })?;
-
-        if slf.as_ptr() == other.as_ptr() {
-            return Ok(false);
-        }
 
         unsafe {
             let inner1 = slf.inner.lock();

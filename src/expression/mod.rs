@@ -41,3 +41,8 @@ pub fn any(
 
     Ok(expr.into_any())
 }
+
+#[pyo3::pyfunction]
+pub fn not_(arg: &pyo3::Bound<'_, PyExpr>) -> PyExpr {
+    sea_query::ExprTrait::not(arg.get().inner.clone()).into()
+}
