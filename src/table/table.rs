@@ -1,8 +1,11 @@
 use pyo3::types::PyAnyMethods;
+use std::collections::HashMap;
+
+type ColumnsMap = HashMap<String, pyo3::Py<pyo3::PyAny>>;
 
 pub struct TableInner {
     pub name: pyo3::Py<pyo3::PyAny>,
-    pub columns: Vec<pyo3::Py<pyo3::PyAny>>,
+    pub columns: ColumnsMap,
     pub indexes: Vec<pyo3::Py<pyo3::PyAny>>,
     pub foreign_keys: Vec<pyo3::Py<pyo3::PyAny>>,
     pub checks: Vec<pyo3::Py<pyo3::PyAny>>,
@@ -26,7 +29,7 @@ impl TableInner {
             x.get().clone()
         });
 
-        for col in self.columns.iter() {
+        for col in self.columns.values() {
             let colbound = unsafe { col.cast_bound_unchecked::<crate::column::PyColumn>(py) };
             let collock = colbound.get().inner.lock();
 
@@ -148,15 +151,23 @@ impl PyTable {
 
         let name = crate::common::PyTableName::from_pyobject(name)?;
 
-        let mut cols = Vec::with_capacity(columns.len());
+        let mut cols = ColumnsMap::with_capacity(columns.len());
         for col in columns {
-            if unsafe {
-                std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE)
-            } {
-                return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
-            }
+            unsafe {
+                if std::hint::unlikely(
+                    pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE,
+                ) {
+                    return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
+                }
 
-            cols.push(col);
+                let colbound = col.cast_bound_unchecked::<crate::column::PyColumn>(py);
+                let colobj = colbound.get().inner.lock();
+
+                let name = colobj.name.clone();
+                drop(colobj);
+
+                cols.insert(name, col);
+            }
         }
 
         let mut indexes_vec = Vec::with_capacity(indexes.capacity());
@@ -223,20 +234,28 @@ impl PyTable {
     fn columns(&self, py: pyo3::Python) -> Vec<pyo3::Py<pyo3::PyAny>> {
         let lock = self.inner.lock();
 
-        lock.columns.iter().map(|x| x.clone_ref(py)).collect()
+        lock.columns.values().map(|x| x.clone_ref(py)).collect()
     }
 
     #[setter]
     fn set_columns(&self, py: pyo3::Python, val: Vec<pyo3::Py<pyo3::PyAny>>) -> pyo3::PyResult<()> {
-        let mut cols = Vec::with_capacity(val.len());
+        let mut cols = ColumnsMap::with_capacity(val.len());
         for col in val {
-            if unsafe {
-                std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE)
-            } {
-                return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
-            }
+            unsafe {
+                if std::hint::unlikely(
+                    pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE,
+                ) {
+                    return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
+                }
 
-            cols.push(col);
+                let colbound = col.cast_bound_unchecked::<crate::column::PyColumn>(py);
+                let colobj = colbound.get().inner.lock();
+
+                let name = colobj.name.clone();
+                drop(colobj);
+
+                cols.insert(name, col);
+            }
         }
 
         let mut lock = self.inner.lock();
@@ -430,6 +449,15 @@ impl PyTable {
         Ok(())
     }
 
+    fn get_column(&self, py: pyo3::Python, name: &str) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let lock = self.inner.lock();
+
+        lock.columns
+            .get(name)
+            .map(|x| x.clone_ref(py))
+            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))
+    }
+
     fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_table_create_statement(backend.py());
@@ -460,7 +488,7 @@ impl PyTable {
         write!(s, "<Table name={} columns=[", lock.name).unwrap();
 
         let n = lock.columns.len() - 1;
-        for (index, col) in lock.columns.iter().enumerate() {
+        for (index, col) in lock.columns.values().enumerate() {
             if index == n {
                 write!(s, "{col}").unwrap();
             } else {
