@@ -17,7 +17,7 @@ impl PyFunctionCall {
         slf: pyo3::PyRef<'a, Self>,
         arg: &pyo3::Bound<'a, super::expr::PyExpr>,
     ) -> pyo3::PyRef<'a, Self> {
-        let arg = arg.get().inner.lock().clone();
+        let arg = arg.get().inner.clone();
 
         {
             let mut lock = slf.inner.lock();
@@ -33,7 +33,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::min(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::min(expr.get().inner.clone())),
         }
     }
 
@@ -43,7 +43,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::max(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::max(expr.get().inner.clone())),
         }
     }
 
@@ -53,7 +53,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::abs(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::abs(expr.get().inner.clone())),
         }
     }
 
@@ -63,7 +63,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::avg(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::avg(expr.get().inner.clone())),
         }
     }
 
@@ -73,7 +73,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::count(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::count(expr.get().inner.clone())),
         }
     }
 
@@ -84,7 +84,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::count_distinct(
-                expr.get().inner.lock().clone(),
+                expr.get().inner.clone(),
             )),
         }
     }
@@ -97,8 +97,8 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::if_null(
-                a.get().inner.lock().clone(),
-                b.get().inner.lock().clone(),
+                a.get().inner.clone(),
+                b.get().inner.clone(),
             )),
         }
     }
@@ -110,7 +110,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::greatest(
-                exprs.into_iter().map(|x| x.get().inner.lock().clone()),
+                exprs.into_iter().map(|x| x.get().inner.clone()),
             )),
         }
     }
@@ -122,7 +122,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::least(
-                exprs.into_iter().map(|x| x.get().inner.lock().clone()),
+                exprs.into_iter().map(|x| x.get().inner.clone()),
             )),
         }
     }
@@ -134,7 +134,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::char_length(
-                expr.get().inner.lock().clone(),
+                expr.get().inner.clone(),
             )),
         }
     }
@@ -146,7 +146,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::coalesce(
-                exprs.into_iter().map(|x| x.get().inner.lock().clone()),
+                exprs.into_iter().map(|x| x.get().inner.clone()),
             )),
         }
     }
@@ -157,7 +157,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::lower(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::lower(expr.get().inner.clone())),
         }
     }
 
@@ -167,7 +167,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::upper(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::upper(expr.get().inner.clone())),
         }
     }
 
@@ -178,7 +178,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::bit_and(
-                expr.get().inner.lock().clone(),
+                expr.get().inner.clone(),
             )),
         }
     }
@@ -190,7 +190,7 @@ impl PyFunctionCall {
     ) -> Self {
         Self {
             inner: parking_lot::Mutex::new(sea_query::Func::bit_or(
-                expr.get().inner.lock().clone(),
+                expr.get().inner.clone(),
             )),
         }
     }
@@ -208,7 +208,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::round(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::round(expr.get().inner.clone())),
         }
     }
 
@@ -218,7 +218,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::md5(expr.get().inner.lock().clone())),
+            inner: parking_lot::Mutex::new(sea_query::Func::md5(expr.get().inner.clone())),
         }
     }
 

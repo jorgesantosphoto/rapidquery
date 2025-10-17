@@ -27,21 +27,13 @@ pub struct ColumnFields {
     pub generated: Option<pyo3::Py<pyo3::PyAny>>,
     pub extra: Option<String>,
     pub comment: Option<String>,
-    pub table: Option<sea_query::DynIden>,
 }
 
 impl ColumnFields {
     #[inline]
     #[optimize(speed)]
     pub fn as_column_ref(&self) -> sea_query::ColumnRef {
-        if let Some(x) = &self.table {
-            sea_query::ColumnRef::TableColumn(
-                x.clone(),
-                sea_query::Alias::new(&self.name).into_iden(),
-            )
-        } else {
-            sea_query::ColumnRef::Column(sea_query::Alias::new(&self.name).into_iden())
-        }
+        sea_query::ColumnRef::Column(sea_query::Alias::new(&self.name).into_iden())
     }
 
     #[inline]
@@ -84,9 +76,7 @@ impl ColumnFields {
                 unsafe { default.cast_bound_unchecked::<crate::expression::PyExpr>(py) };
 
             let default_expr = default_expr.get();
-            let lock = default_expr.inner.lock();
-
-            column_def.default(lock.clone());
+            column_def.default(default_expr.inner.clone());
         }
 
         if let Some(generated) = &self.generated {
@@ -94,10 +84,9 @@ impl ColumnFields {
                 unsafe { generated.cast_bound_unchecked::<crate::expression::PyExpr>(py) };
 
             let generated_expr = generated_expr.get();
-            let lock = generated_expr.inner.lock();
 
             column_def.generated(
-                lock.clone(),
+                generated_expr.inner.clone(),
                 self.options & (ColumnOptions::StoredGenerated as u8) > 0,
             );
         }
@@ -121,7 +110,6 @@ impl ColumnFields {
             generated: self.generated.as_ref().map(|x| x.clone_ref(py)),
             extra: self.extra.clone(),
             comment: self.comment.clone(),
-            table: self.table.clone(),
         }
     }
 }
@@ -217,7 +205,6 @@ impl PyColumn {
             generated: generated_expr.map(|x| pyo3::Py::new(py, x).unwrap().into_any()),
             extra,
             comment,
-            table: None,
         };
 
         Ok(PyColumn {
@@ -388,351 +375,11 @@ impl PyColumn {
         lock.as_column_ref().into()
     }
 
+    #[inline]
+    #[optimize(speed)]
     fn to_expr(&self) -> crate::expression::PyExpr {
         let lock = self.inner.lock();
         lock.as_simple_expr().into()
-    }
-
-    fn cast_as(&self, value: String) -> crate::expression::PyExpr {
-        let lock = self.inner.lock();
-        let expr =
-            sea_query::ExprTrait::cast_as(lock.as_simple_expr(), sea_query::Alias::new(value));
-        expr.into()
-    }
-
-    #[pyo3(signature=(pattern, escape=None))]
-    fn like(&self, pattern: String, escape: Option<char>) -> crate::expression::PyExpr {
-        let e = sea_query::LikeExpr::new(pattern);
-
-        let expr = self.inner.lock().as_simple_expr();
-
-        if let Some(x) = escape {
-            sea_query::ExprTrait::like(expr, e.escape(x)).into()
-        } else {
-            sea_query::ExprTrait::like(expr, e).into()
-        }
-    }
-
-    #[pyo3(signature=(pattern, escape=None))]
-    fn not_like(&self, pattern: String, escape: Option<char>) -> crate::expression::PyExpr {
-        let e = sea_query::LikeExpr::new(pattern);
-
-        let expr = self.inner.lock().as_simple_expr();
-
-        if let Some(x) = escape {
-            sea_query::ExprTrait::like(expr, e.escape(x)).into()
-        } else {
-            sea_query::ExprTrait::like(expr, e).into()
-        }
-    }
-
-    fn __eq__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::eq(expr, expr2).into()
-    }
-
-    fn __ne__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::ne(expr, expr2).into()
-    }
-
-    fn __gt__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::gt(expr, expr2).into()
-    }
-
-    fn __ge__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::gte(expr, expr2).into()
-    }
-
-    fn __lt__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::lt(expr, expr2).into()
-    }
-
-    fn __le__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::lte(expr, expr2).into()
-    }
-
-    fn __add__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::add(expr, expr2).into()
-    }
-
-    fn __sub__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::sub(expr, expr2).into()
-    }
-
-    fn __and__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::bit_and(expr, expr2).into()
-    }
-
-    fn __or__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::bit_or(expr, expr2).into()
-    }
-
-    fn __truediv__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::div(expr, expr2).into()
-    }
-
-    fn is_(&self, other: &pyo3::Bound<'_, crate::expression::PyExpr>) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::is(expr, expr2).into()
-    }
-
-    fn is_not(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::is_not(expr, expr2).into()
-    }
-
-    fn is_null(&self) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-
-        sea_query::ExprTrait::is_null(expr).into()
-    }
-
-    fn is_not_null(&self) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-
-        sea_query::ExprTrait::is_not_null(expr).into()
-    }
-
-    fn __lshift__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::left_shift(expr, expr2).into()
-    }
-
-    fn __rshift__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::right_shift(expr, expr2).into()
-    }
-
-    fn __mod__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::modulo(expr, expr2).into()
-    }
-
-    fn __mul__(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::ExprTrait::mul(expr, expr2).into()
-    }
-
-    fn pg_concat(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::extension::postgres::PgExpr::concat(expr, expr2).into()
-    }
-
-    fn pg_contained(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::extension::postgres::PgExpr::contained(expr, expr2).into()
-    }
-
-    fn get_json_field(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::extension::postgres::PgExpr::get_json_field(expr, expr2).into()
-    }
-
-    fn cast_json_field(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::extension::postgres::PgExpr::cast_json_field(expr, expr2).into()
-    }
-
-    fn pg_contains(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::extension::postgres::PgExpr::contains(expr, expr2).into()
-    }
-
-    fn pg_matches(
-        &self,
-        other: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = other.get().inner.lock().clone();
-
-        sea_query::extension::postgres::PgExpr::matches(expr, expr2).into()
-    }
-
-    #[pyo3(signature=(pattern, escape=None))]
-    fn pg_ilike(&self, pattern: String, escape: Option<char>) -> crate::expression::PyExpr {
-        let e = sea_query::LikeExpr::new(pattern);
-
-        let expr = self.inner.lock().as_simple_expr();
-
-        if let Some(x) = escape {
-            sea_query::extension::postgres::PgExpr::ilike(expr, e.escape(x)).into()
-        } else {
-            sea_query::extension::postgres::PgExpr::ilike(expr, e).into()
-        }
-    }
-
-    #[pyo3(signature=(pattern, escape=None))]
-    fn pg_not_ilike(&self, pattern: String, escape: Option<char>) -> crate::expression::PyExpr {
-        let e = sea_query::LikeExpr::new(pattern);
-
-        let expr = self.inner.lock().as_simple_expr();
-
-        if let Some(x) = escape {
-            sea_query::extension::postgres::PgExpr::not_ilike(expr, e.escape(x)).into()
-        } else {
-            sea_query::extension::postgres::PgExpr::not_ilike(expr, e).into()
-        }
-    }
-
-    fn between(
-        &self,
-        a: &pyo3::Bound<'_, crate::expression::PyExpr>,
-        b: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = a.get().inner.lock().clone();
-        let expr3 = b.get().inner.lock().clone();
-
-        sea_query::ExprTrait::between(expr, expr2, expr3).into()
-    }
-
-    fn not_between(
-        &self,
-        a: &pyo3::Bound<'_, crate::expression::PyExpr>,
-        b: &pyo3::Bound<'_, crate::expression::PyExpr>,
-    ) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-        let expr2 = a.get().inner.lock().clone();
-        let expr3 = b.get().inner.lock().clone();
-
-        sea_query::ExprTrait::not_between(expr, expr2, expr3).into()
-    }
-
-    fn in_(&self, other: Vec<pyo3::Py<crate::expression::PyExpr>>) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-
-        sea_query::ExprTrait::is_in(
-            expr,
-            other.into_iter().map(|x| x.get().inner.lock().clone()),
-        )
-        .into()
-    }
-
-    fn not_in(&self, other: Vec<pyo3::Py<crate::expression::PyExpr>>) -> crate::expression::PyExpr {
-        let expr = self.inner.lock().as_simple_expr();
-
-        sea_query::ExprTrait::is_not_in(
-            expr,
-            other.into_iter().map(|x| x.get().inner.lock().clone()),
-        )
-        .into()
     }
 
     fn __copy__(&self, py: pyo3::Python) -> Self {
@@ -754,18 +401,7 @@ impl PyColumn {
 
         let mut s: Vec<u8> = Vec::with_capacity(20);
 
-        if let Some(x) = &lock.table {
-            write!(
-                s,
-                "<Column {:?}.{:?} type={}",
-                x.to_string(),
-                lock.name,
-                lock.r#type
-            )
-            .unwrap();
-        } else {
-            write!(s, "<Column {:?} type={}", lock.name, lock.r#type).unwrap();
-        }
+        write!(s, "<Column {:?} type={}", lock.name, lock.r#type).unwrap();
 
         if lock.options & (ColumnOptions::PrimaryKey as u8) > 0 {
             write!(s, " primary_key=True").unwrap();

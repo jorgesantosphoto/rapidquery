@@ -1047,6 +1047,8 @@ class Expr:
         """
         ...
 
+    def not_(self) -> Self: ...
+
     def is_(self, other: Self) -> Self:
         """
         Create an IS comparison expression (for NULL comparisons).
@@ -1111,7 +1113,7 @@ class Expr:
         """
         ...
 
-    def cast_json_field(self, other: Self) -> Self:
+    def sqlite_cast_json_field(self, other: Self) -> Self:
         """
         Extract and cast a JSON field to appropriate SQL type using ->> operator.
 
@@ -1125,7 +1127,33 @@ class Expr:
         """
         ...
 
-    def get_json_field(self, other: Self) -> Self:
+    def sqlite_get_json_field(self, other: Self) -> Self:
+        """
+        Extract a JSON field using -> operator (returns JSON type).
+
+        Args:
+            other: The JSON field path/name to extract
+
+        Returns:
+            A new Expr representing the JSON field extraction
+        """
+        ...
+
+    def pg_cast_json_field(self, other: Self) -> Self:
+        """
+        Extract and cast a JSON field to appropriate SQL type using ->> operator.
+
+        This operator returns the JSON field as text and can be cast to other types.
+
+        Args:
+            other: The JSON field path/name to extract
+
+        Returns:
+            A new Expr representing the JSON field extraction and casting
+        """
+        ...
+
+    def pg_get_json_field(self, other: Self) -> Self:
         """
         Extract a JSON field using -> operator (returns JSON type).
 
@@ -1743,242 +1771,6 @@ class Column:
         """
         ...
 
-    def cast_as(self, value: str) -> Expr:
-        """
-        Create a CAST expression for this column.
-
-        Args:
-            value: The target SQL type name
-
-        Returns:
-            An Expr representing CAST(column AS type)
-        """
-        ...
-
-    def like(self, pattern: str, escape: typing.Optional[str] = ...) -> Expr:
-        """
-        Create a LIKE expression using this column.
-
-        Args:
-            pattern: The pattern to match against
-            escape: Optional escape character for wildcards
-
-        Returns:
-            An Expr representing column LIKE pattern
-        """
-        ...
-
-    def not_like(self, pattern: str, escape: typing.Optional[str] = ...) -> Expr:
-        """
-        Create a NOT LIKE expression using this column.
-
-        Args:
-            pattern: The pattern that should not match
-            escape: Optional escape character for wildcards
-
-        Returns:
-            An Expr representing column NOT LIKE pattern
-        """
-        ...
-
-    def __eq__(self, other: Expr) -> Expr:
-        """
-        Create equality comparison with this column.
-        """
-        ...
-
-    def __ne__(self, other: Expr) -> Expr:
-        """
-        Create inequality comparison with this column.
-        """
-        ...
-
-    def __gt__(self, other: Expr) -> Expr:
-        """
-        Create greater-than comparison with this column.
-        """
-        ...
-
-    def __ge__(self, other: Expr) -> Expr:
-        """
-        Create greater-than-or-equal comparison with this column.
-        """
-        ...
-
-    def __lt__(self, other: Expr) -> Expr:
-        """
-        Create less-than comparison with this column.
-        """
-        ...
-
-    def __le__(self, other: Expr) -> Expr:
-        """
-        Create less-than-or-equal comparison with this column.
-        """
-        ...
-
-    def __add__(self, other: Expr) -> Expr:
-        """
-        Create addition expression with this column.
-        """
-        ...
-
-    def __sub__(self, other: Expr) -> Expr:
-        """
-        Create subtraction expression with this column.
-        """
-        ...
-
-    def __and__(self, other: Expr) -> Expr:
-        """
-        Create logical AND expression with this column.
-        """
-        ...
-
-    def __or__(self, other: Expr) -> Expr:
-        """
-        Create logical OR expression with this column.
-        """
-        ...
-
-    def __truediv__(self, other: Expr) -> Expr:
-        """
-        Create division expression with this column.
-        """
-        ...
-
-    def is_(self, other: Expr) -> Expr:
-        """
-        Create IS comparison with this column.
-        """
-        ...
-
-    def sqlite_matches(self, other: Expr) -> Expr:
-        """
-        Create SQLite MATCH expression with this column.
-        """
-        ...
-
-    def sqlite_glob(self, other: Expr) -> Expr:
-        """
-        Create SQLite GLOB expression with this column.
-        """
-        ...
-
-    def pg_concat(self, other: Expr) -> Expr:
-        """
-        Create PostgreSQL concatenation with this column.
-        """
-        ...
-
-    def pg_contained(self, other: Expr) -> Expr:
-        """
-        Create PostgreSQL contained expression with this column.
-        """
-        ...
-
-    def cast_json_field(self, other: Expr) -> Expr:
-        """
-        Extract and cast JSON field from this column.
-        """
-        ...
-
-    def get_json_field(self, other: Expr) -> Expr:
-        """
-        Extract JSON field from this column.
-        """
-        ...
-
-    def pg_contains(self, other: Expr) -> Expr:
-        """
-        Create PostgreSQL contains expression with this column.
-        """
-        ...
-
-    def pg_matches(self, other: Expr) -> Expr:
-        """
-        Create PostgreSQL full-text match with this column.
-        """
-        ...
-
-    def pg_ilike(self, other: Expr) -> Expr:
-        """
-        Create PostgreSQL ILIKE expression with this column.
-        """
-        ...
-
-    def pg_not_ilike(self, other: Expr) -> Expr:
-        """
-        Create PostgreSQL NOT ILIKE expression with this column.
-        """
-        ...
-
-    def is_not(self, other: Expr) -> Expr:
-        """
-        Create IS NOT comparison with this column.
-        """
-        ...
-
-    def is_null(self) -> Expr:
-        """
-        Create IS NULL check for this column.
-        """
-        ...
-
-    def is_not_null(self) -> Expr:
-        """
-        Create IS NOT NULL check for this column.
-        """
-        ...
-
-    def __lshift__(self, other: Expr) -> Expr:
-        """
-        Create bitwise left shift with this column.
-        """
-        ...
-
-    def __rshift__(self, other: Expr) -> Expr:
-        """
-        Create bitwise right shift with this column.
-        """
-        ...
-
-    def __mod__(self, other: Expr) -> Expr:
-        """
-        Create modulo operation with this column.
-        """
-        ...
-
-    def __mul__(self, other: Expr) -> Expr:
-        """
-        Create multiplication with this column.
-        """
-        ...
-
-    def between(self, a: Expr, b: Expr) -> Expr:
-        """
-        Create BETWEEN expression with this column.
-        """
-        ...
-
-    def not_between(self, a: Expr, b: Expr) -> Expr:
-        """
-        Create NOT BETWEEN expression with this column.
-        """
-        ...
-
-    def in_(self, other: typing.Sequence[Expr]) -> Expr:
-        """
-        Create IN expression with this column.
-        """
-        ...
-
-    def not_in(self, other: typing.Sequence[Expr]) -> Expr:
-        """
-        Create NOT IN expression with this column.
-        """
-        ...
-
     def __copy__(self) -> Self:
         """
         Create a shallow copy of this Column.
@@ -2468,14 +2260,8 @@ class DropIndex:
         """
         ...
 
-class TableColumnsVector:
-    def append(self, value: Column) -> None: ...
-    def to_list(self) -> typing.Sequence[Column]: ...
-    def __getattr__(self, key: str) -> Column: ...
-    def __delattr__(self, key: str) -> None: ...
-    def __repr__(self) -> str: ...
-
 class Table:
+    columns: typing.Sequence[Column]
     indexes: typing.Sequence[Index]
     foreign_keys: typing.Sequence[ForeignKeySpec]
     checks: typing.Sequence[Expr]
@@ -2502,9 +2288,5 @@ class Table:
         character_set: typing.Optional[str] = ...,
         extra: typing.Optional[str] = ...,
     ) -> Self: ...
-    @property
-    def columns(self) -> TableColumnsVector: ...
-    @property
-    def c(self) -> TableColumnsVector: ...
     def build(self, backend: BackendMeta) -> str: ...
     def __repr__(self) -> str: ...

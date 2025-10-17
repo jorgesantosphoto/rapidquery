@@ -1,12 +1,8 @@
 use pyo3::types::PyAnyMethods;
-use std::collections::HashMap;
-use std::sync::Arc;
-
-type ColumnMap = HashMap<String, pyo3::Py<pyo3::PyAny>>;
 
 pub struct TableInner {
     pub name: pyo3::Py<pyo3::PyAny>,
-    pub columns: ColumnMap,
+    pub columns: Vec<pyo3::Py<pyo3::PyAny>>,
     pub indexes: Vec<pyo3::Py<pyo3::PyAny>>,
     pub foreign_keys: Vec<pyo3::Py<pyo3::PyAny>>,
     pub checks: Vec<pyo3::Py<pyo3::PyAny>>,
@@ -30,7 +26,7 @@ impl TableInner {
             x.get().clone()
         });
 
-        for col in self.columns.values() {
+        for col in self.columns.iter() {
             let colbound = unsafe { col.cast_bound_unchecked::<crate::column::PyColumn>(py) };
             let collock = colbound.get().inner.lock();
 
@@ -57,11 +53,9 @@ impl TableInner {
 
         for check in self.checks.iter() {
             let check_expr = unsafe { check.cast_bound_unchecked::<crate::expression::PyExpr>(py) };
-
             let check_expr = check_expr.get();
-            let lock = check_expr.inner.lock();
 
-            stmt.check(lock.clone());
+            stmt.check(check_expr.inner.clone());
         }
 
         if self.if_not_exists {
@@ -112,98 +106,9 @@ impl TableInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "TableColumnsVector", frozen)]
-pub struct PyTableColumnsVector {
-    pub inner: Arc<parking_lot::Mutex<TableInner>>,
-}
-
-#[pyo3::pymethods]
-impl PyTableColumnsVector {
-    fn append(&self, value: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<()> {
-        let mut lock = self.inner.lock();
-
-        let name_as_str = unsafe {
-            let bound = lock
-                .name
-                .cast_bound_unchecked::<crate::common::PyTableName>(value.py());
-
-            bound.get().name.clone()
-        };
-
-        unsafe {
-            if std::hint::unlikely(
-                pyo3::ffi::Py_TYPE(value.as_ptr()) != crate::typeref::COLUMN_TYPE,
-            ) {
-                return Err(typeerror!(
-                    "expected Column, got {:?}",
-                    value.py(),
-                    value.as_ptr()
-                ));
-            }
-        }
-
-        let colbound = unsafe { value.cast_unchecked::<crate::column::PyColumn>() };
-        let mut collock = colbound.get().inner.lock();
-
-        collock.table = Some(name_as_str.clone());
-
-        let colname = collock.name.clone();
-        drop(collock);
-
-        lock.columns.insert(colname, value.clone().unbind());
-        Ok(())
-    }
-
-    fn to_list(&self, py: pyo3::Python) -> Vec<pyo3::Py<pyo3::PyAny>> {
-        let lock = self.inner.lock();
-
-        lock.columns.values().map(|x| x.clone_ref(py)).collect()
-    }
-
-    fn __getattr__(&self, py: pyo3::Python, key: String) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
-        let lock = self.inner.lock();
-
-        lock.columns
-            .get(&key)
-            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyAttributeError, _>(key))
-            .map(|x| x.clone_ref(py))
-    }
-
-    fn __delattr__(&self, key: String) -> pyo3::PyResult<()> {
-        let mut lock = self.inner.lock();
-
-        lock.columns
-            .remove(&key)
-            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyAttributeError, _>(key))?;
-
-        Ok(())
-    }
-
-    fn __repr__(&self) -> String {
-        use std::io::Write;
-
-        let lock = self.inner.lock();
-        let mut s = Vec::with_capacity(20);
-
-        write!(s, "<TableColumnsVector name={} columns=[", lock.name).unwrap();
-
-        let n = lock.columns.len() - 1;
-        for (index, col) in lock.columns.values().enumerate() {
-            if index == n {
-                write!(s, "{col}").unwrap();
-            } else {
-                write!(s, "{col}, ").unwrap();
-            }
-        }
-        write!(s, "]>").unwrap();
-
-        unsafe { String::from_utf8_unchecked(s) }
-    }
-}
-
 #[pyo3::pyclass(module = "rapidquery._lib", name = "Table", frozen)]
 pub struct PyTable {
-    pub inner: Arc<parking_lot::Mutex<TableInner>>,
+    pub inner: parking_lot::Mutex<TableInner>,
 }
 
 #[pyo3::pymethods]
@@ -242,13 +147,8 @@ impl PyTable {
         let py = name.py();
 
         let name = crate::common::PyTableName::from_pyobject(name)?;
-        let name_as_str = unsafe {
-            let bound = name.cast_bound_unchecked::<crate::common::PyTableName>(py);
 
-            bound.get().name.clone()
-        };
-
-        let mut cols = ColumnMap::with_capacity(columns.len());
+        let mut cols = Vec::with_capacity(columns.len());
         for col in columns {
             if unsafe {
                 std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE)
@@ -256,15 +156,7 @@ impl PyTable {
                 return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
             }
 
-            let colbound = unsafe { col.bind(py).cast_unchecked::<crate::column::PyColumn>() };
-            let mut collock = colbound.get().inner.lock();
-
-            collock.table = Some(name_as_str.clone());
-
-            let colname = collock.name.clone();
-            drop(collock);
-
-            cols.insert(colname, col);
+            cols.push(col);
         }
 
         let mut indexes_vec = Vec::with_capacity(indexes.capacity());
@@ -323,32 +215,34 @@ impl PyTable {
         };
 
         Ok(Self {
-            inner: Arc::new(parking_lot::Mutex::new(inner)),
+            inner: parking_lot::Mutex::new(inner),
         })
     }
 
     #[getter]
-    fn columns(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
-        pyo3::Py::new(
-            py,
-            PyTableColumnsVector {
-                inner: Arc::clone(&self.inner),
-            },
-        )
-        .unwrap()
-        .into_any()
+    fn columns(&self, py: pyo3::Python) -> Vec<pyo3::Py<pyo3::PyAny>> {
+        let lock = self.inner.lock();
+
+        lock.columns.iter().map(|x| x.clone_ref(py)).collect()
     }
 
-    #[getter]
-    fn c(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
-        pyo3::Py::new(
-            py,
-            PyTableColumnsVector {
-                inner: Arc::clone(&self.inner),
-            },
-        )
-        .unwrap()
-        .into_any()
+    #[setter]
+    fn set_columns(&self, py: pyo3::Python, val: Vec<pyo3::Py<pyo3::PyAny>>) -> pyo3::PyResult<()> {
+        let mut cols = Vec::with_capacity(val.len());
+        for col in val {
+            if unsafe {
+                std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE)
+            } {
+                return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
+            }
+
+            cols.push(col);
+        }
+
+        let mut lock = self.inner.lock();
+        lock.columns = cols;
+
+        Ok(())
     }
 
     #[getter]
@@ -566,7 +460,7 @@ impl PyTable {
         write!(s, "<Table name={} columns=[", lock.name).unwrap();
 
         let n = lock.columns.len() - 1;
-        for (index, col) in lock.columns.values().enumerate() {
+        for (index, col) in lock.columns.iter().enumerate() {
             if index == n {
                 write!(s, "{col}").unwrap();
             } else {
