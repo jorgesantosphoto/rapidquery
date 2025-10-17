@@ -1,5 +1,6 @@
 #![allow(unused_unsafe)]
 #![allow(clippy::macro_metavars_in_unsafe)]
+#![allow(clippy::too_many_arguments)]
 #![warn(clippy::print_stdout)]
 #![warn(clippy::print_stderr)]
 #![warn(clippy::dbg_macro)]

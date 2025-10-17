@@ -187,7 +187,7 @@ impl PyForeignKeySpec {
 
                 for col in from_columns.iter() {
                     s.push('_');
-                    s += &col;
+                    s += col;
                 }
 
                 s.push('_');
@@ -195,7 +195,7 @@ impl PyForeignKeySpec {
 
                 for col in to_columns.iter() {
                     s.push('_');
-                    s += &col;
+                    s += col;
                 }
 
                 s

@@ -19,6 +19,89 @@ enum ColumnOptions {
     StoredGenerated = 1 << 5,
 }
 
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum LazyColumnRef {
+    None,
+    TableName(pyo3::Py<pyo3::PyAny>),
+    ColumnRef(sea_query::ColumnRef),
+}
+
+impl LazyColumnRef {
+    #[inline]
+    #[optimize(speed)]
+    fn clone_ref(&self, py: pyo3::Python) -> Self {
+        match self {
+            Self::None => Self::None,
+            Self::ColumnRef(x) => Self::ColumnRef(x.clone()),
+            Self::TableName(x) => Self::TableName(x.clone_ref(py)),
+        }
+    }
+
+    #[inline]
+    #[optimize(speed)]
+    fn set_name(&mut self, name: &str) {
+        match self {
+            Self::None => (),
+            Self::TableName(_) => (),
+            Self::ColumnRef(x) => match x {
+                sea_query::ColumnRef::Column(_) => {
+                    *x = sea_query::ColumnRef::Column(sea_query::Alias::new(name).into_iden());
+                }
+                sea_query::ColumnRef::TableColumn(tb, _) => {
+                    *x = sea_query::ColumnRef::TableColumn(
+                        tb.clone(),
+                        sea_query::Alias::new(name).into_iden(),
+                    );
+                }
+                sea_query::ColumnRef::SchemaTableColumn(sc, tb, _) => {
+                    *x = sea_query::ColumnRef::SchemaTableColumn(
+                        sc.clone(),
+                        tb.clone(),
+                        sea_query::Alias::new(name).into_iden(),
+                    );
+                }
+                _ => (),
+            },
+        }
+    }
+
+    #[inline]
+    #[optimize(speed)]
+    fn with_name(&mut self, py: pyo3::Python, name: &str) -> sea_query::ColumnRef {
+        match self {
+            Self::None => {
+                let x = sea_query::ColumnRef::Column(sea_query::Alias::new(name).into_iden());
+                *self = Self::ColumnRef(x.clone());
+                x
+            }
+            Self::TableName(tb) => {
+                let bound = tb.cast_bound::<crate::common::PyTableName>(py).unwrap();
+                let ptr = bound.get();
+
+                let x = {
+                    if let Some(schema) = &ptr.schema {
+                        sea_query::ColumnRef::SchemaTableColumn(
+                            schema.clone(),
+                            ptr.name.clone(),
+                            sea_query::Alias::new(name).into_iden(),
+                        )
+                    } else {
+                        sea_query::ColumnRef::TableColumn(
+                            ptr.name.clone(),
+                            sea_query::Alias::new(name).into_iden(),
+                        )
+                    }
+                };
+
+                *self = Self::ColumnRef(x.clone());
+                x
+            }
+            Self::ColumnRef(x) => x.clone(),
+        }
+    }
+}
+
 pub struct ColumnFields {
     pub name: String,
     pub r#type: pyo3::Py<pyo3::PyAny>,
@@ -27,19 +110,20 @@ pub struct ColumnFields {
     pub generated: Option<pyo3::Py<pyo3::PyAny>>,
     pub extra: Option<String>,
     pub comment: Option<String>,
+    pub column_ref: LazyColumnRef,
 }
 
 impl ColumnFields {
     #[inline]
     #[optimize(speed)]
-    pub fn as_column_ref(&self) -> sea_query::ColumnRef {
-        sea_query::ColumnRef::Column(sea_query::Alias::new(&self.name).into_iden())
+    pub fn as_column_ref(&mut self, py: pyo3::Python) -> sea_query::ColumnRef {
+        self.column_ref.with_name(py, &self.name)
     }
 
     #[inline]
     #[optimize(speed)]
-    pub fn as_simple_expr(&self) -> sea_query::SimpleExpr {
-        sea_query::SimpleExpr::Column(self.as_column_ref())
+    pub fn as_simple_expr(&mut self, py: pyo3::Python) -> sea_query::SimpleExpr {
+        sea_query::SimpleExpr::Column(self.as_column_ref(py))
     }
 
     #[inline]
@@ -110,6 +194,7 @@ impl ColumnFields {
             generated: self.generated.as_ref().map(|x| x.clone_ref(py)),
             extra: self.extra.clone(),
             comment: self.comment.clone(),
+            column_ref: self.column_ref.clone_ref(py),
         }
     }
 }
@@ -205,6 +290,7 @@ impl PyColumn {
             generated: generated_expr.map(|x| pyo3::Py::new(py, x).unwrap().into_any()),
             extra,
             comment,
+            column_ref: LazyColumnRef::None,
         };
 
         Ok(PyColumn {
@@ -220,6 +306,7 @@ impl PyColumn {
     #[setter]
     fn set_name(&self, val: String) {
         let mut lock = self.inner.lock();
+        lock.column_ref.set_name(&val);
         lock.name = val;
     }
 
@@ -368,18 +455,14 @@ impl PyColumn {
         Ok(())
     }
 
-    #[inline]
-    #[optimize(speed)]
-    fn to_column_ref(&self) -> crate::common::PyColumnRef {
-        let lock = self.inner.lock();
-        lock.as_column_ref().into()
+    fn to_column_ref(&self, py: pyo3::Python) -> crate::common::PyColumnRef {
+        let mut lock = self.inner.lock();
+        lock.as_column_ref(py).into()
     }
 
-    #[inline]
-    #[optimize(speed)]
-    fn to_expr(&self) -> crate::expression::PyExpr {
-        let lock = self.inner.lock();
-        lock.as_simple_expr().into()
+    fn to_expr(&self, py: pyo3::Python) -> crate::expression::PyExpr {
+        let mut lock = self.inner.lock();
+        lock.as_simple_expr(py).into()
     }
 
     fn __copy__(&self, py: pyo3::Python) -> Self {

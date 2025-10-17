@@ -208,14 +208,14 @@ impl PyIndex {
 
                     bound.get().name.to_string()
                 },
-                None => String::new()
+                None => String::new(),
             };
 
             // ix_<table>_<column_names...>
             let mut s = format!("ix_{table_name}");
 
             for col in cols.iter() {
-                let bound = unsafe {col.cast_bound_unchecked::<crate::common::PyIndexColumn>(py)};
+                let bound = unsafe { col.cast_bound_unchecked::<crate::common::PyIndexColumn>(py) };
 
                 s.push('_');
                 s += &bound.get().name;

@@ -133,9 +133,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::char_length(
-                expr.get().inner.clone(),
-            )),
+            inner: parking_lot::Mutex::new(sea_query::Func::char_length(expr.get().inner.clone())),
         }
     }
 
@@ -177,9 +175,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::bit_and(
-                expr.get().inner.clone(),
-            )),
+            inner: parking_lot::Mutex::new(sea_query::Func::bit_and(expr.get().inner.clone())),
         }
     }
 
@@ -189,9 +185,7 @@ impl PyFunctionCall {
         expr: &pyo3::Bound<'_, super::expr::PyExpr>,
     ) -> Self {
         Self {
-            inner: parking_lot::Mutex::new(sea_query::Func::bit_or(
-                expr.get().inner.clone(),
-            )),
+            inner: parking_lot::Mutex::new(sea_query::Func::bit_or(expr.get().inner.clone())),
         }
     }
 

@@ -161,7 +161,9 @@ impl PyTable {
                 }
 
                 let colbound = col.cast_bound_unchecked::<crate::column::PyColumn>(py);
-                let colobj = colbound.get().inner.lock();
+                let mut colobj = colbound.get().inner.lock();
+
+                colobj.column_ref = crate::column::LazyColumnRef::TableName(name.clone_ref(py));
 
                 let name = colobj.name.clone();
                 drop(colobj);
@@ -228,6 +230,12 @@ impl PyTable {
         Ok(Self {
             inner: parking_lot::Mutex::new(inner),
         })
+    }
+
+    #[getter]
+    fn name(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
+        let lock = self.inner.lock();
+        lock.name.clone_ref(py)
     }
 
     #[getter]
@@ -388,7 +396,7 @@ impl PyTable {
     #[setter]
     fn set_comment(&self, val: Option<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
-        lock.comment = val.map(|x| x.into());
+        lock.comment = val;
 
         Ok(())
     }
@@ -402,7 +410,7 @@ impl PyTable {
     #[setter]
     fn set_engine(&self, val: Option<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
-        lock.engine = val.map(|x| x.into());
+        lock.engine = val;
 
         Ok(())
     }
@@ -416,7 +424,7 @@ impl PyTable {
     #[setter]
     fn set_collate(&self, val: Option<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
-        lock.collate = val.map(|x| x.into());
+        lock.collate = val;
 
         Ok(())
     }
@@ -430,7 +438,7 @@ impl PyTable {
     #[setter]
     fn set_character_set(&self, val: Option<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
-        lock.character_set = val.map(|x| x.into());
+        lock.character_set = val;
 
         Ok(())
     }
@@ -444,7 +452,7 @@ impl PyTable {
     #[setter]
     fn set_extra(&self, val: Option<String>) -> pyo3::PyResult<()> {
         let mut lock = self.inner.lock();
-        lock.extra = val.map(|x| x.into());
+        lock.extra = val;
 
         Ok(())
     }

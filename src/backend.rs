@@ -8,7 +8,7 @@ impl PyBackendMeta {
     #[new]
     fn new() -> pyo3::PyResult<Self> {
         Err(
-            pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>("don't use directly BackendMeta class; use PostgreSQLBackend, MySQLBackend, or SQLiteBackend")
+            pyo3::PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>("don't use directly BackendMeta class; use PostgreSQLBackend, MySQLBackend, or SQLiteBackend")
         )
     }
 }
