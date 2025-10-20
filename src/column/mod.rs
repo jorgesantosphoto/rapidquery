@@ -365,7 +365,7 @@ impl PyColumn {
 
     #[getter]
     fn unique(&self) -> bool {
-        (self.inner.lock().options & (ColumnOptions::NotNull as u8)) == 0
+        (self.inner.lock().options & (ColumnOptions::UniqueKey as u8)) > 0
     }
 
     #[setter]
@@ -390,6 +390,21 @@ impl PyColumn {
             lock.options |= ColumnOptions::StoredGenerated as u8;
         } else {
             lock.options &= !(ColumnOptions::StoredGenerated as u8);
+        }
+    }
+
+    #[getter]
+    fn auto_increment(&self) -> bool {
+        (self.inner.lock().options & (ColumnOptions::AutoIncrement as u8)) > 0
+    }
+
+    #[setter]
+    fn set_auto_increment(&self, val: bool) {
+        let mut lock = self.inner.lock();
+        if val {
+            lock.options |= ColumnOptions::AutoIncrement as u8;
+        } else {
+            lock.options &= !(ColumnOptions::AutoIncrement as u8);
         }
     }
 

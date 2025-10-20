@@ -577,7 +577,6 @@ class AdaptedValue:
     NOTE: this class is immutable and frozen.
     """
 
-    @typing.overload
     def __new__(cls, val: typing.Any, type: typing.Optional[ColumnTypeMeta] = None) -> Self:
         """
         Validates and adapts your value for Rust and SQL, then creates a new `AdaptedValue` instance.
@@ -1367,6 +1366,17 @@ class FunctionCall:
 
         Returns:
             Self for method chaining
+        """
+        ...
+
+    def to_expr(self) -> Expr:
+        """
+        Convert this function call to an expression.
+
+        Shorthand for `Expr(self)`
+
+        Returns:
+            An Expr representing this column
         """
         ...
 
