@@ -70,9 +70,9 @@ impl PyDropTable {
 
         let inner = DropTableInner {
             name,
-            options: (if_exists as u8) * (DropTableOptions::IfExists as u8)
-                | (restrict as u8) * (DropTableOptions::Restrict as u8)
-                | (cascade as u8) * (DropTableOptions::Cascade as u8),
+            options: ((if_exists as u8) * (DropTableOptions::IfExists as u8))
+                | ((restrict as u8) * (DropTableOptions::Restrict as u8))
+                | ((cascade as u8) * (DropTableOptions::Cascade as u8)),
         };
 
         Ok(Self {
@@ -241,6 +241,7 @@ impl PyRenameTable {
     }
 
     #[getter]
+    #[allow(clippy::wrong_self_convention)]
     fn from_name(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
         let lock = self.inner.lock();
         lock.from_name.clone_ref(py)
@@ -448,6 +449,7 @@ impl PyAlterTableRenameColumnOption {
     }
 
     #[getter]
+    #[allow(clippy::wrong_self_convention)]
     fn from_name(&self) -> String {
         self.from_name.clone()
     }
@@ -532,7 +534,7 @@ impl PyAlterTableAddForeignKeyOption {
     }
 
     #[getter]
-    fn column(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
+    fn foreign_key(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
         self.foreign_key.clone_ref(py)
     }
 

@@ -515,9 +515,9 @@ impl PyTable {
 
         write!(s, "<Table name={} columns=[", lock.name).unwrap();
 
-        let n = lock.columns.len() - 1;
+        let n = lock.columns.len();
         for (index, col) in lock.columns.values().enumerate() {
-            if index == n {
+            if index+1 == n {
                 write!(s, "{col}").unwrap();
             } else {
                 write!(s, "{col}, ").unwrap();
@@ -526,9 +526,9 @@ impl PyTable {
 
         write!(s, "] indexes=[").unwrap();
 
-        let n = lock.indexes.len() - 1;
+        let n = lock.indexes.len();
         for (index, ix) in lock.indexes.iter().enumerate() {
-            if index == n {
+            if index+1 == n {
                 write!(s, "{ix}").unwrap();
             } else {
                 write!(s, "{ix}, ").unwrap();
@@ -537,9 +537,9 @@ impl PyTable {
 
         write!(s, "] foreign_keys=[").unwrap();
 
-        let n = lock.foreign_keys.len() - 1;
+        let n = lock.foreign_keys.len();
         for (index, fk) in lock.foreign_keys.iter().enumerate() {
-            if index == n {
+            if index+1 == n {
                 write!(s, "{fk}").unwrap();
             } else {
                 write!(s, "{fk}, ").unwrap();
@@ -570,9 +570,9 @@ impl PyTable {
 
         write!(s, " checks=[").unwrap();
 
-        let n = lock.checks.len() - 1;
+        let n = lock.checks.len();
         for (index, ix) in lock.checks.iter().enumerate() {
-            if index == n {
+            if index+1 == n {
                 write!(s, "{ix}").unwrap();
             } else {
                 write!(s, "{ix}, ").unwrap();
