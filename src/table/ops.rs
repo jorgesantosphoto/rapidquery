@@ -295,6 +295,91 @@ impl PyRenameTable {
     }
 }
 
+struct TruncateTableInner {
+    // Always is `TableName`
+    name: pyo3::Py<pyo3::PyAny>,
+}
+
+impl TruncateTableInner {
+    fn clone_ref(&self, py: pyo3::Python) -> Self {
+        Self {
+            name: self.name.clone_ref(py),
+        }
+    }
+
+    fn as_statement(&self, py: pyo3::Python<'_>) -> sea_query::TableTruncateStatement {
+        let mut stmt = sea_query::TableTruncateStatement::new();
+
+        let name = unsafe {
+            self.name
+                .cast_bound_unchecked::<crate::common::PyTableName>(py)
+        };
+
+        stmt.table(name.get().clone());
+        stmt
+    }
+}
+
+#[pyo3::pyclass(module = "rapidquery._lib", name = "TruncateTable", frozen)]
+pub struct PyTruncateTable {
+    inner: parking_lot::Mutex<TruncateTableInner>,
+}
+
+#[pyo3::pymethods]
+impl PyTruncateTable {
+    #[new]
+    #[pyo3(signature=(name))]
+    fn new(name: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        let name = crate::common::PyTableName::from_pyobject(name)?;
+
+        let inner = TruncateTableInner { name };
+
+        Ok(Self {
+            inner: parking_lot::Mutex::new(inner),
+        })
+    }
+
+    #[getter]
+    fn name(&self, py: pyo3::Python) -> pyo3::Py<pyo3::PyAny> {
+        let lock = self.inner.lock();
+        lock.name.clone_ref(py)
+    }
+
+    #[setter]
+    fn set_name(&self, val: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<()> {
+        let mut lock = self.inner.lock();
+        lock.name = crate::common::PyTableName::from_pyobject(val)?;
+        Ok(())
+    }
+
+    fn __copy__(&self, py: pyo3::Python) -> Self {
+        Self {
+            inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
+        }
+    }
+
+    fn copy(&self, py: pyo3::Python) -> Self {
+        Self {
+            inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
+        }
+    }
+
+    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+        let lock = self.inner.lock();
+        let stmt = lock.as_statement(backend.py());
+        drop(lock);
+
+        build_schema!(
+            crate::backend::into_schema_builder => backend => build_any(stmt)
+        )
+    }
+
+    fn __repr__(&self) -> String {
+        let lock = self.inner.lock();
+        format!("<TruncateTable {}>", lock.name)
+    }
+}
+
 #[pyo3::pyclass(
     module = "rapidquery._lib",
     name = "AlterTableOptionMeta",

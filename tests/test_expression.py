@@ -57,11 +57,3 @@ def test_invalid_expr():
         _lib.Expr(Unknown())
     except ValueError:
         pass
-
-
-def _benchmark_expr_calling(val, eq):
-    _lib.Expr(val) == eq
-
-
-def test_expr_benchmark(benchmark):
-    benchmark(_benchmark_expr_calling, {"json": "hello"}, ["LIST"])

@@ -8,6 +8,7 @@ mod serialize;
 pub use deserialize::DeserializedValue;
 pub use serialize::SerializedValue;
 
+/// A bridge between Python & [`sea_query::Value`]
 #[derive(Debug, Clone)]
 pub struct ReturnableValue {
     deserialized: Option<DeserializedValue>,

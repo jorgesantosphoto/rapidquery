@@ -1,5 +1,8 @@
 use pyo3::types::PyAnyMethods;
 
+/// Represents a SQL expression that can be built into SQL code.
+/// 
+/// A bridge between Python & [`sea_query::SimpleExpr`]
 #[pyo3::pyclass(module = "rapidquery._lib", name = "Expr", frozen)]
 pub struct PyExpr {
     pub(crate) inner: sea_query::SimpleExpr,

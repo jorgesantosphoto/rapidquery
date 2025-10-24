@@ -20,6 +20,7 @@ mod common;
 mod expression;
 mod foreign_key;
 mod index;
+mod query;
 mod table;
 mod typeref;
 
@@ -68,8 +69,11 @@ mod _lib {
         PyAlterTable, PyAlterTableAddColumnOption, PyAlterTableAddForeignKeyOption,
         PyAlterTableDropColumnOption, PyAlterTableDropForeignKeyOption,
         PyAlterTableModifyColumnOption, PyAlterTableOptionMeta, PyAlterTableRenameColumnOption,
-        PyDropTable, PyRenameTable, PyTable,
+        PyDropTable, PyRenameTable, PyTable, PyTruncateTable,
     };
+
+    #[pymodule_export]
+    use super::query::insert::PyInsert;
 
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

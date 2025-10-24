@@ -236,7 +236,10 @@ class TestAlterTable:
 
     def test_alter_table_build_method(self):
         """Test that build method works with backend"""
-        options = [AlterTableAddColumnOption(Column("status", StringType(20)), False)]
+        options = [
+            AlterTableAddColumnOption(Column("status", StringType(20)), False),
+            AlterTableRenameColumnOption("status", "state"),
+        ]
         alter_table = AlterTable("orders", options)
         backend = MySQLBackend()
 

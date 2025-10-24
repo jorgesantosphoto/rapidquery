@@ -1,3 +1,6 @@
+/// Represents a SQL function call that can be used in expressions.
+/// 
+/// A bridge between Python & [`sea_query::FunctionCall`]
 #[pyo3::pyclass(module = "rapidquery._lib", name = "FunctionCall", frozen)]
 pub struct PyFunctionCall {
     pub inner: parking_lot::Mutex<sea_query::FunctionCall>,

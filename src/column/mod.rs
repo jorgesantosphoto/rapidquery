@@ -105,7 +105,8 @@ impl LazyColumnRef {
     }
 }
 
-pub struct ColumnFields {
+/// A bridge between Python & [`sea_query::ColumnDef`]
+pub struct ColumnInner {
     pub name: String,
 
     // Always is `ColumnTypeMeta`
@@ -122,7 +123,7 @@ pub struct ColumnFields {
     pub column_ref: LazyColumnRef,
 }
 
-impl ColumnFields {
+impl ColumnInner {
     #[inline]
     #[optimize(speed)]
     pub fn as_column_ref(&mut self, py: pyo3::Python) -> sea_query::ColumnRef {
@@ -208,9 +209,17 @@ impl ColumnFields {
     }
 }
 
+/// Defines a table column with its properties and constraints.
+/// 
+/// Represents a complete column definition including:
+/// - Column name and data type
+/// - Constraints (primary key, unique, nullable)
+/// - Auto-increment behavior
+/// - Default values and generated columns
+/// - Comments and extra specifications
 #[pyo3::pyclass(module = "rapidquery._lib", name = "Column", frozen)]
 pub struct PyColumn {
-    pub(crate) inner: parking_lot::Mutex<ColumnFields>,
+    pub(crate) inner: parking_lot::Mutex<ColumnInner>,
 }
 
 #[pyo3::pymethods]
@@ -293,7 +302,7 @@ impl PyColumn {
         };
 
         let py = r#type.py();
-        let inner = ColumnFields {
+        let inner = ColumnInner {
             name,
             r#type: r#type.clone().unbind(),
             options,

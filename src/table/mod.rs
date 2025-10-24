@@ -4,6 +4,7 @@ pub use ops::{
     PyAlterTable, PyAlterTableAddColumnOption, PyAlterTableAddForeignKeyOption,
     PyAlterTableDropColumnOption, PyAlterTableDropForeignKeyOption, PyAlterTableModifyColumnOption,
     PyAlterTableOptionMeta, PyAlterTableRenameColumnOption, PyDropTable, PyRenameTable,
+    PyTruncateTable,
 };
 
 use pyo3::types::PyAnyMethods;
@@ -517,7 +518,7 @@ impl PyTable {
 
         let n = lock.columns.len();
         for (index, col) in lock.columns.values().enumerate() {
-            if index+1 == n {
+            if index + 1 == n {
                 write!(s, "{col}").unwrap();
             } else {
                 write!(s, "{col}, ").unwrap();
@@ -528,7 +529,7 @@ impl PyTable {
 
         let n = lock.indexes.len();
         for (index, ix) in lock.indexes.iter().enumerate() {
-            if index+1 == n {
+            if index + 1 == n {
                 write!(s, "{ix}").unwrap();
             } else {
                 write!(s, "{ix}, ").unwrap();
@@ -539,7 +540,7 @@ impl PyTable {
 
         let n = lock.foreign_keys.len();
         for (index, fk) in lock.foreign_keys.iter().enumerate() {
-            if index+1 == n {
+            if index + 1 == n {
                 write!(s, "{fk}").unwrap();
             } else {
                 write!(s, "{fk}, ").unwrap();
@@ -572,7 +573,7 @@ impl PyTable {
 
         let n = lock.checks.len();
         for (index, ix) in lock.checks.iter().enumerate() {
-            if index+1 == n {
+            if index + 1 == n {
                 write!(s, "{ix}").unwrap();
             } else {
                 write!(s, "{ix}, ").unwrap();
