@@ -600,7 +600,7 @@ impl PyAlterTableAddForeignKeyOption {
     ) -> pyo3::PyResult<(Self, PyAlterTableOptionMeta)> {
         unsafe {
             if std::hint::unlikely(
-                !foreign_key.is_exact_instance_of::<crate::foreign_key::PyForeignKeySpec>(),
+                !foreign_key.is_exact_instance_of::<crate::foreign_key::PyForeignKey>(),
             ) {
                 return Err(typeerror!(
                     "expected ForeignKeySpec, got {:?}",
@@ -701,7 +701,7 @@ impl AlterTableInner {
 
                     let spec = x
                         .foreign_key
-                        .cast_bound_unchecked::<crate::foreign_key::PyForeignKeySpec>(py);
+                        .cast_bound_unchecked::<crate::foreign_key::PyForeignKey>(py);
                     let spec = spec.get().inner.lock().as_statement(py);
 
                     stmt.add_foreign_key(spec.get_foreign_key());

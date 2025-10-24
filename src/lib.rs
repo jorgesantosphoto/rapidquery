@@ -56,7 +56,7 @@ mod _lib {
     use super::column::PyColumn;
 
     #[pymodule_export]
-    use super::foreign_key::PyForeignKeySpec;
+    use super::foreign_key::PyForeignKey;
 
     #[pymodule_export]
     use super::backend::{PyBackendMeta, PyMySQLBackend, PyPostgreSQLBackend, PySQLiteBackend};

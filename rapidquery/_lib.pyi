@@ -1915,7 +1915,7 @@ class TableName:
 
 _ForeignKeyActions = typing.Literal["CASCADE", "NO ACTION", "RESTRICT", "SET DEFAULT", "SET NULL"]
 
-class ForeignKeySpec:
+class ForeignKey:
     """
     Specifies a foreign key relationship between tables.
 
@@ -1929,7 +1929,7 @@ class ForeignKeySpec:
     child table's columns match existing values in the parent table's columns.
 
     Example:
-        >>> ForeignKeySpec(
+        >>> ForeignKey(
         ...     from_columns=["user_id"],
         ...     to_columns=["id"],
         ...     to_table="users",
@@ -1984,7 +1984,7 @@ class ForeignKeySpec:
         on_update: typing.Optional[_ForeignKeyActions] = ...,
     ) -> None:
         """
-        Create a new ForeignKeySpec.
+        Create a new ForeignKey.
 
         Args:
             from_columns: Columns in the child/referencing table
@@ -1996,28 +1996,28 @@ class ForeignKeySpec:
             on_update: Action on parent row update
 
         Returns:
-            A new ForeignKeySpec instance
+            A new ForeignKey instance
         """
         ...
 
     def __copy__(self) -> Self:
         """
-        Create a shallow copy of this ForeignKeySpec.
+        Create a shallow copy of this ForeignKey.
         """
         ...
 
     def copy(self) -> Self:
         """
-        Create a copy of this ForeignKeySpec.
+        Create a copy of this ForeignKey.
 
         Returns:
-            A new ForeignKeySpec instance with the same values
+            A new ForeignKey instance with the same values
         """
         ...
 
     def __repr__(self) -> str:
         """
-        Return a string representation of the ForeignKeySpec.
+        Return a string representation of the ForeignKey.
         """
         ...
 
@@ -2280,7 +2280,7 @@ class DropIndex:
 class Table:
     columns: typing.Sequence[Column]
     indexes: typing.Sequence[Index]
-    foreign_keys: typing.Sequence[ForeignKeySpec]
+    foreign_keys: typing.Sequence[ForeignKey]
     checks: typing.Sequence[Expr]
     if_not_exists: bool
     temporary: bool
@@ -2295,7 +2295,7 @@ class Table:
         name: typing.Union[str, TableName],
         columns: typing.Sequence[Column],
         indexes: typing.Sequence[Index] = ...,
-        foreign_keys: typing.Sequence[ForeignKeySpec] = ...,
+        foreign_keys: typing.Sequence[ForeignKey] = ...,
         checks: typing.Sequence[Expr] = ...,
         if_not_exists: bool = ...,
         temporary: bool = ...,
@@ -2367,9 +2367,9 @@ class AlterTableAddColumnOption(AlterTableOptionMeta):
     def __repr__(self) -> str: ...
 
 class AlterTableAddForeignKeyOption(AlterTableOptionMeta):
-    def __new__(cls, foreign_key: ForeignKeySpec) -> Self: ...
+    def __new__(cls, foreign_key: ForeignKey) -> Self: ...
     @property
-    def foreign_key(self) -> ForeignKeySpec: ...
+    def foreign_key(self) -> ForeignKey: ...
     def __repr__(self) -> str: ...
 
 class AlterTableDropColumnOption(AlterTableOptionMeta):

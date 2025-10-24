@@ -168,6 +168,8 @@ pub struct PyIndex {
     pub inner: parking_lot::Mutex<IndexInner>,
 }
 
+#[inline]
+#[optimize(speed)]
 fn convert_pyobject_into_index_column(
     py: pyo3::Python,
     obj: pyo3::Py<pyo3::PyAny>,

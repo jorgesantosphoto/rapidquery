@@ -51,7 +51,7 @@ impl std::fmt::Display for ForeignKeyActionAlias {
     }
 }
 
-pub struct ForeignKeySpecInner {
+pub struct ForeignKeyInner {
     pub name: String,
 
     // Always is `TableName`
@@ -66,7 +66,7 @@ pub struct ForeignKeySpecInner {
     pub on_update: Option<ForeignKeyActionAlias>,
 }
 
-impl ForeignKeySpecInner {
+impl ForeignKeyInner {
     pub fn clone_ref(&self, py: pyo3::Python) -> Self {
         Self {
             name: self.name.clone(),
@@ -117,13 +117,13 @@ impl ForeignKeySpecInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "ForeignKeySpec", frozen)]
-pub struct PyForeignKeySpec {
-    pub inner: parking_lot::Mutex<ForeignKeySpecInner>,
+#[pyo3::pyclass(module = "rapidquery._lib", name = "ForeignKey", frozen)]
+pub struct PyForeignKey {
+    pub inner: parking_lot::Mutex<ForeignKeyInner>,
 }
 
 #[pyo3::pymethods]
-impl PyForeignKeySpec {
+impl PyForeignKey {
     #[new]
     #[pyo3(
         signature=(
@@ -225,7 +225,7 @@ impl PyForeignKeySpec {
         }
 
         Ok(Self {
-            inner: parking_lot::Mutex::new(ForeignKeySpecInner {
+            inner: parking_lot::Mutex::new(ForeignKeyInner {
                 name,
                 to_table,
                 to_columns,
@@ -399,7 +399,7 @@ impl PyForeignKeySpec {
 
         write!(
             s,
-            "<ForeignKeySpec {:?} to_table={} to_columns={:?} from_columns={:?}",
+            "<ForeignKey {:?} to_table={} to_columns={:?} from_columns={:?}",
             lock.name, lock.to_table, lock.to_columns, lock.from_columns
         )
         .unwrap();

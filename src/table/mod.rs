@@ -67,7 +67,7 @@ impl TableInner {
 
         for fk in self.foreign_keys.iter() {
             let fkbound =
-                unsafe { fk.cast_bound_unchecked::<crate::foreign_key::PyForeignKeySpec>(py) };
+                unsafe { fk.cast_bound_unchecked::<crate::foreign_key::PyForeignKey>(py) };
 
             let fklock = fkbound.get().inner.lock();
             stmt.foreign_key(&mut fklock.as_statement(py));
@@ -212,7 +212,7 @@ impl PyTable {
         for fk in foreign_keys {
             if std::hint::unlikely(
                 !fk.bind(py)
-                    .is_instance_of::<crate::foreign_key::PyForeignKeySpec>(),
+                    .is_instance_of::<crate::foreign_key::PyForeignKey>(),
             ) {
                 return Err(typeerror!(
                     "expected ForeignKeySpec, got {:?}",
@@ -344,7 +344,7 @@ impl PyTable {
         for fk in val {
             if std::hint::unlikely(
                 !fk.bind(py)
-                    .is_instance_of::<crate::foreign_key::PyForeignKeySpec>(),
+                    .is_instance_of::<crate::foreign_key::PyForeignKey>(),
             ) {
                 return Err(typeerror!(
                     "expected ForeignKeySpec, got {:?}",
