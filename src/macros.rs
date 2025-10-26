@@ -36,13 +36,13 @@ pub unsafe fn get_type_name<'a>(py: pyo3::Python<'a>, obj: *mut pyo3::ffi::PyObj
 #[macro_export]
 macro_rules! typeerror {
     (
-        $message:literal,
+        $message:expr,
     ) => {
         pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>($message)
     };
 
     (
-        $message:literal,
+        $message:expr,
         $py:expr,
         $($ptr:expr),*
     ) => {

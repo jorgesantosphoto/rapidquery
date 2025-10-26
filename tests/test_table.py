@@ -92,7 +92,7 @@ class TestTable:
         columns = [Column("id", IntegerType())]
         table = Table("users", columns)
 
-        with pytest.raises(KeyError): 
+        with pytest.raises(KeyError):
             table.get_column("nonexistent")
 
     def test_table_build_method(self):

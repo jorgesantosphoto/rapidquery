@@ -210,7 +210,7 @@ impl ColumnInner {
 }
 
 /// Defines a table column with its properties and constraints.
-/// 
+///
 /// Represents a complete column definition including:
 /// - Column name and data type
 /// - Constraints (primary key, unique, nullable)
