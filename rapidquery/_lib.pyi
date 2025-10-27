@@ -697,10 +697,6 @@ class ColumnRef:
         >>> ColumnRef("id", table="users", schema="public")
     """
 
-    name: str
-    table: typing.Optional[str]
-    schema: typing.Optional[str]
-
     def __new__(
         cls,
         name: str,
@@ -720,6 +716,12 @@ class ColumnRef:
         """
         ...
 
+    @property
+    def name(self) -> str: ...
+    @property
+    def table(self) -> typing.Optional[str]: ...
+    @property
+    def schema(self) -> typing.Optional[str]: ...
     @classmethod
     def parse(cls, string: str) -> "ColumnRef":
         """
@@ -980,73 +982,73 @@ class Expr:
         """
         ...
 
-    def __eq__(self, other: typing.Any) -> Self:
+    def __eq__(self, other: _ExprValue) -> Self:
         """
         Create an equality comparison expression.
         """
         ...
 
-    def __ne__(self, other: typing.Any) -> Self:
+    def __ne__(self, other: _ExprValue) -> Self:
         """
         Create an inequality comparison expression.
         """
         ...
 
-    def __gt__(self, other: typing.Any) -> Self:
+    def __gt__(self, other: _ExprValue) -> Self:
         """
         Create a greater-than comparison expression.
         """
         ...
 
-    def __ge__(self, other: typing.Any) -> Self:
+    def __ge__(self, other: _ExprValue) -> Self:
         """
         Create a greater-than-or-equal comparison expression.
         """
         ...
 
-    def __lt__(self, other: typing.Any) -> Self:
+    def __lt__(self, other: _ExprValue) -> Self:
         """
         Create a less-than comparison expression.
         """
         ...
 
-    def __le__(self, other: typing.Any) -> Self:
+    def __le__(self, other: _ExprValue) -> Self:
         """
         Create a less-than-or-equal comparison expression.
         """
         ...
 
-    def __add__(self, other: typing.Any) -> Self:
+    def __add__(self, other: _ExprValue) -> Self:
         """
         Create an addition expression.
         """
         ...
 
-    def __sub__(self, other: typing.Any) -> Self:
+    def __sub__(self, other: _ExprValue) -> Self:
         """
         Create a subtraction expression.
         """
         ...
 
-    def __and__(self, other: typing.Any) -> Self:
+    def __and__(self, other: _ExprValue) -> Self:
         """
         Create a logical AND expression.
         """
         ...
 
-    def __or__(self, other: typing.Any) -> Self:
+    def __or__(self, other: _ExprValue) -> Self:
         """
         Create a logical OR expression.
         """
         ...
 
-    def __truediv__(self, other: typing.Any) -> Self:
+    def __truediv__(self, other: _ExprValue) -> Self:
         """
         Create a division expression.
         """
         ...
 
-    def is_(self, other: typing.Any) -> Self:
+    def is_(self, other: _ExprValue) -> Self:
         """
         Create an IS comparison expression (for NULL comparisons).
 
@@ -1060,7 +1062,7 @@ class Expr:
         """
         ...
 
-    def sqlite_matches(self, other: typing.Any) -> Self:
+    def sqlite_matches(self, other: _ExprValue) -> Self:
         """
         Create a SQLite MATCH expression for full-text search.
 
@@ -1072,7 +1074,7 @@ class Expr:
         """
         ...
 
-    def sqlite_glob(self, other: typing.Any) -> Self:
+    def sqlite_glob(self, other: _ExprValue) -> Self:
         """
         Create a SQLite GLOB expression for pattern matching.
 
@@ -1084,7 +1086,7 @@ class Expr:
         """
         ...
 
-    def pg_concat(self, other: typing.Any) -> Self:
+    def pg_concat(self, other: _ExprValue) -> Self:
         """
         Create a PostgreSQL concatenation expression using || operator.
 
@@ -1096,7 +1098,7 @@ class Expr:
         """
         ...
 
-    def pg_contained(self, other: typing.Any) -> Self:
+    def pg_contained(self, other: _ExprValue) -> Self:
         """
         Create a PostgreSQL contained expression using <@ operator.
 
@@ -1110,7 +1112,7 @@ class Expr:
         """
         ...
 
-    def sqlite_cast_json_field(self, other: typing.Any) -> Self:
+    def sqlite_cast_json_field(self, other: _ExprValue) -> Self:
         """
         Extract and cast a JSON field to appropriate SQL type using ->> operator.
 
@@ -1124,7 +1126,7 @@ class Expr:
         """
         ...
 
-    def sqlite_get_json_field(self, other: typing.Any) -> Self:
+    def sqlite_get_json_field(self, other: _ExprValue) -> Self:
         """
         Extract a JSON field using -> operator (returns JSON type).
 
@@ -1136,7 +1138,7 @@ class Expr:
         """
         ...
 
-    def pg_cast_json_field(self, other: typing.Any) -> Self:
+    def pg_cast_json_field(self, other: _ExprValue) -> Self:
         """
         Extract and cast a JSON field to appropriate SQL type using ->> operator.
 
@@ -1150,7 +1152,7 @@ class Expr:
         """
         ...
 
-    def pg_get_json_field(self, other: typing.Any) -> Self:
+    def pg_get_json_field(self, other: _ExprValue) -> Self:
         """
         Extract a JSON field using -> operator (returns JSON type).
 
@@ -1162,7 +1164,7 @@ class Expr:
         """
         ...
 
-    def pg_contains(self, other: typing.Any) -> Self:
+    def pg_contains(self, other: _ExprValue) -> Self:
         """
         Create a PostgreSQL contains expression using @> operator.
 
@@ -1176,7 +1178,7 @@ class Expr:
         """
         ...
 
-    def pg_matches(self, other: typing.Any) -> Self:
+    def pg_matches(self, other: _ExprValue) -> Self:
         """
         Create a PostgreSQL full-text search matches expression using @@ operator.
 
@@ -1188,7 +1190,7 @@ class Expr:
         """
         ...
 
-    def pg_ilike(self, other: typing.Any) -> Self:
+    def pg_ilike(self, other: _ExprValue) -> Self:
         """
         Create a PostgreSQL case-insensitive LIKE expression.
 
@@ -1200,7 +1202,7 @@ class Expr:
         """
         ...
 
-    def pg_not_ilike(self, other: typing.Any) -> Self:
+    def pg_not_ilike(self, other: _ExprValue) -> Self:
         """
         Create a PostgreSQL case-insensitive NOT LIKE expression.
 
@@ -1212,7 +1214,7 @@ class Expr:
         """
         ...
 
-    def is_not(self, other: typing.Any) -> Self:
+    def is_not(self, other: _ExprValue) -> Self:
         """
         Create an IS NOT comparison expression.
 
@@ -1242,31 +1244,31 @@ class Expr:
         """
         ...
 
-    def __lshift__(self, other: typing.Any) -> Self:
+    def __lshift__(self, other: _ExprValue) -> Self:
         """
         Create a bitwise left shift expression.
         """
         ...
 
-    def __rshift__(self, other: typing.Any) -> Self:
+    def __rshift__(self, other: _ExprValue) -> Self:
         """
         Create a bitwise right shift expression.
         """
         ...
 
-    def __mod__(self, other: typing.Any) -> Self:
+    def __mod__(self, other: _ExprValue) -> Self:
         """
         Create a modulo expression.
         """
         ...
 
-    def __mul__(self, other: typing.Any) -> Self:
+    def __mul__(self, other: _ExprValue) -> Self:
         """
         Create a multiplication expression.
         """
         ...
 
-    def between(self, a: typing.Any, b: typing.Any) -> Self:
+    def between(self, a: _ExprValue, b: _ExprValue) -> Self:
         """
         Create a BETWEEN range comparison expression.
 
@@ -1279,7 +1281,7 @@ class Expr:
         """
         ...
 
-    def not_between(self, a: typing.Any, b: typing.Any) -> Self:
+    def not_between(self, a: _ExprValue, b: _ExprValue) -> Self:
         """
         Create a NOT BETWEEN range comparison expression.
 
@@ -1831,15 +1833,6 @@ class TableName:
         >>> TableName("users", schema="hr", database="company")  # Fully qualified
     """
 
-    name: str
-    """The base name of the table."""
-
-    schema: typing.Optional[str]
-    """The schema/namespace containing the table, if specified."""
-
-    database: typing.Optional[str]
-    """The database containing the table, if specified."""
-
     def __new__(
         cls,
         name: str,
@@ -1859,6 +1852,12 @@ class TableName:
         """
         ...
 
+    @property
+    def name(self) -> str: ...
+    @property
+    def schema(self) -> typing.Optional[str]: ...
+    @property
+    def database(self) -> typing.Optional[str]: ...
     @classmethod
     def parse(cls, string: str) -> Self:
         """
@@ -2411,6 +2410,17 @@ class AlterTable:
     def build(self, backend: BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
+class OnConflict:
+    def __new__(cls, *targets: typing.Union[str, Column, Expr]) -> Self: ...
+    def do_nothing(self, *keys: typing.Union[str, Column]) -> Self: ...
+    @typing.overload
+    def do_update(self, *keys: typing.Union[str, Column]) -> Self: ...
+    @typing.overload
+    def do_update(self, **kwds: _ExprValue) -> Self: ...
+    def target_where(self, condition: Expr) -> Self: ...
+    def action_where(self, condition: Expr) -> Self: ...
+    def __repr__(self) -> str: ...
+
 class Insert:
     def __new__(cls) -> Self: ...
     def replace(self) -> Self: ...
@@ -2421,3 +2431,4 @@ class Insert:
     @typing.overload
     def values(self, *args: _ExprValue) -> Self: ...
     def or_default_values(self, rows: int = ...) -> Self: ...
+    def on_conflict(self, action: OnConflict) -> Self: ...

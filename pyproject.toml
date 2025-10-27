@@ -48,4 +48,5 @@ dev = [
     "pytest>=8.3.5",
     "maturin>=1.9.4",
     "pytest-benchmark>=4.0.0",
+    "pypika>=0.48.9",
 ]

@@ -45,6 +45,12 @@ impl PyExpr {
 
     #[inline]
     #[optimize(speed)]
+    pub fn from_simple_expr(value: sea_query::SimpleExpr) -> Self {
+        Self { inner: value }
+    }
+
+    #[inline]
+    #[optimize(speed)]
     pub fn from_tuple<I>(values: I) -> Self
     where
         I: IntoIterator<Item = sea_query::SimpleExpr>,

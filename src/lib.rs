@@ -7,6 +7,9 @@
 #![feature(likely_unlikely)]
 #![feature(optimize_attribute)]
 
+// TODO: Use [`pyo3::Bound`] instead of [`Vec<T>`] arguments
+// to improve performance
+
 /// Helper macros and some utilitize functions
 #[macro_use]
 mod macros;
@@ -74,6 +77,9 @@ mod _lib {
 
     #[pymodule_export]
     use super::query::insert::PyInsert;
+
+    #[pymodule_export]
+    use super::query::on_conflict::PyOnConflict;
 
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

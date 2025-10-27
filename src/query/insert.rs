@@ -15,7 +15,7 @@ pub struct InsertInner {
     pub table: Option<pyo3::Py<pyo3::PyAny>>,
     pub columns: Vec<String>,
     pub source: InsertValueSource,
-    // pub on_conflict: Option<pyo3::Py<pyo3::PyAny>>,
+    pub on_conflict: Option<pyo3::Py<pyo3::PyAny>>,
     // pub returning: Option<pyo3::Py<pyo3::PyAny>>,
     pub default_values: Option<u32>,
     // pub with: Option<pyo3::Py<pyo3::PyAny>>,
@@ -27,14 +27,11 @@ pub struct PyInsert {
 }
 
 impl PyInsert {
+    #[inline]
     fn values_from_dictionary<'a>(
         slf: pyo3::PyRef<'a, Self>,
         kwds: &'a pyo3::Bound<'_, pyo3::types::PyDict>,
     ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
-        // let kwds = kwds.ok_or_else(|| {
-        //     pyo3::PyErr::new::<pyo3::exceptions::PyTypeError, _>("expected at list
-        // one paremeter") })?;
-
         {
             let lock = slf.inner.lock();
 
@@ -89,6 +86,7 @@ impl PyInsert {
         Ok(slf)
     }
 
+    #[inline]
     fn values_from_tuple<'a>(
         slf: pyo3::PyRef<'a, Self>,
         args: &'a pyo3::Bound<'_, pyo3::types::PyTuple>,
@@ -225,9 +223,11 @@ impl PyInsert {
         }
 
         if !PyTupleMethods::is_empty(args) {
-            PyInsert::values_from_tuple(slf, args)
+            Self::values_from_tuple(slf, args)
+        } else if kwds.is_some() {
+            Self::values_from_dictionary(slf, kwds.unwrap())
         } else {
-            PyInsert::values_from_dictionary(slf, kwds.unwrap())
+            Err(typeerror!("no arguments provided",))
         }
     }
 
@@ -239,5 +239,17 @@ impl PyInsert {
         }
 
         slf
-    }   
+    }
+
+    fn on_conflict<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        action: &'a pyo3::Bound<'a, super::on_conflict::PyOnConflict>,
+    ) -> pyo3::PyRef<'a, Self> {
+        {
+            let mut lock = slf.inner.lock();
+            lock.on_conflict = Some(action.clone().unbind().into_any());
+        }
+
+        slf
+    }
 }
