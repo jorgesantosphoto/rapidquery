@@ -1,4 +1,5 @@
 use pyo3::types::{PyAnyMethods, PyDictMethods, PyTupleMethods};
+use sea_query::IntoIden;
 
 #[derive(Debug, Default)]
 pub enum InsertValueSource {
@@ -15,6 +16,14 @@ pub enum InsertValueSource {
     ),
 }
 
+#[derive(Debug, Default)]
+pub enum ReturningClause {
+    #[default]
+    None,
+    All,
+    Columns(Vec<String>),
+}
+
 #[derive(Default)]
 pub struct InsertInner {
     pub replace: bool,
@@ -26,7 +35,7 @@ pub struct InsertInner {
 
     // Always is `Option<OnConflict>`
     pub on_conflict: Option<pyo3::Py<pyo3::PyAny>>,
-    // pub returning: Option<pyo3::Py<pyo3::PyAny>>,
+    pub returning_clause: ReturningClause,
     pub default_values: Option<u32>,
     // pub with: Option<pyo3::Py<pyo3::PyAny>>,
 }
@@ -44,7 +53,7 @@ impl InsertInner {
             stmt.into_table(x.get().clone());
         }
 
-        stmt.columns(self.columns.iter().map(|x| sea_query::Alias::new(x)));
+        stmt.columns(self.columns.iter().map(sea_query::Alias::new));
 
         match &self.source {
             InsertValueSource::None => (),
@@ -78,6 +87,21 @@ impl InsertInner {
 
         if let Some(rows) = self.default_values {
             stmt.or_default_values_many(rows);
+        }
+
+        match &self.returning_clause {
+            ReturningClause::None => (),
+            ReturningClause::All => {
+                stmt.returning_all();
+            }
+            ReturningClause::Columns(x) => {
+                stmt.returning(sea_query::ReturningClause::Columns(
+                    x.iter()
+                        .map(sea_query::Alias::new)
+                        .map(|x| sea_query::ColumnRef::Column(x.into_iden()))
+                        .collect(),
+                ));
+            }
         }
 
         stmt
@@ -316,6 +340,47 @@ impl PyInsert {
         slf
     }
 
+    #[pyo3(signature=(*args))]
+    fn returning<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        args: &'a pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
+        let mut cols = Vec::<String>::new();
+
+        unsafe {
+            for col in PyTupleMethods::iter(args) {
+                if pyo3::ffi::Py_TYPE(col.as_ptr()) == crate::typeref::COLUMN_TYPE {
+                    let col = col.cast_into_unchecked::<crate::column::PyColumn>();
+                    cols.push(col.get().inner.lock().name.clone());
+                } else if pyo3::ffi::PyUnicode_CheckExact(col.as_ptr()) == 1 {
+                    cols.push(col.extract::<String>().unwrap_unchecked());
+                } else {
+                    return Err(typeerror!(
+                        "expected Column or str, got {:?}",
+                        col.py(),
+                        col.as_ptr()
+                    ));
+                }
+            }
+        }
+
+        {
+            let mut lock = slf.inner.lock();
+            lock.returning_clause = ReturningClause::Columns(cols);
+        }
+
+        Ok(slf)
+    }
+
+    fn returning_all(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+        {
+            let mut lock = slf.inner.lock();
+            lock.returning_clause = ReturningClause::All;
+        }
+
+        slf
+    }
+
     fn build(
         &self,
         backend: &pyo3::Bound<'_, pyo3::PyAny>,
@@ -349,11 +414,9 @@ impl PyInsert {
         if let Some(x) = &lock.table {
             write!(s, " into={x}").unwrap();
         }
-
         if !lock.columns.is_empty() {
             write!(s, " columns={:?}", lock.columns).unwrap();
         }
-
         if let Some(x) = &lock.on_conflict {
             write!(s, " on_conflict={x}").unwrap();
         }
@@ -396,6 +459,16 @@ impl PyInsert {
                     }
                 }
                 write!(s, "]]").unwrap();
+            }
+        }
+
+        match &lock.returning_clause {
+            ReturningClause::None => (),
+            ReturningClause::All => {
+                write!(s, " returning_all").unwrap();
+            }
+            ReturningClause::Columns(x) => {
+                write!(s, " returning={x:?}").unwrap();
             }
         }
 

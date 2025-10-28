@@ -81,7 +81,7 @@ macro_rules! prepare_sql {
 #[macro_export]
 macro_rules! build_schema {
     ($backend:expr => $build_func:ident($stmt:expr)) => {{
-        let builder = match crate::backend::into_schema_builder($backend) {
+        let builder = match $crate::backend::into_schema_builder($backend) {
             Some(x) => x,
             None => {
                 return Err(typeerror!(
@@ -102,7 +102,7 @@ macro_rules! build_schema {
 #[macro_export]
 macro_rules! build_query_parts {
     ($backend:expr => $build_func:ident($stmt:expr)) => {{
-        let builder = match crate::backend::into_query_builder($backend) {
+        let builder = match $crate::backend::into_query_builder($backend) {
             Some(x) => x,
             None => {
                 return Err(typeerror!(
@@ -127,9 +127,9 @@ macro_rules! build_query_parts {
         let values = {
             values
                 .into_iter()
-                .map(|x| crate::adaptation::SerializedValue::from(x))
-                .map(|x| crate::adaptation::ReturnableValue::from(x))
-                .map(|x| crate::adaptation::PyAdaptedValue {
+                .map(|x| $crate::adaptation::SerializedValue::from(x))
+                .map(|x| $crate::adaptation::ReturnableValue::from(x))
+                .map(|x| $crate::adaptation::PyAdaptedValue {
                     inner: parking_lot::Mutex::new(x),
                 })
         };
@@ -158,7 +158,7 @@ macro_rules! build_query_parts {
 #[macro_export]
 macro_rules! build_query_string {
     ($backend:expr => $build_func:ident($stmt:expr)) => {{
-        let builder = match crate::backend::into_query_builder($backend) {
+        let builder = match $crate::backend::into_query_builder($backend) {
             Some(x) => x,
             None => {
                 return Err(typeerror!(

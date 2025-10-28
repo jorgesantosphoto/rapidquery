@@ -34,7 +34,7 @@ impl OnConflictInner {
     #[optimize(speed)]
     pub(super) fn as_statement(&self, py: pyo3::Python) -> sea_query::OnConflict {
         let mut stmt =
-            sea_query::OnConflict::columns(self.targets.iter().map(|x| sea_query::Alias::new(x)));
+            sea_query::OnConflict::columns(self.targets.iter().map(sea_query::Alias::new));
 
         match &self.action {
             OnConflictAction::None => (),
@@ -42,7 +42,7 @@ impl OnConflictInner {
                 if x.is_empty() {
                     stmt.do_nothing();
                 } else {
-                    stmt.do_nothing_on(x.iter().map(|x| sea_query::Alias::new(x)));
+                    stmt.do_nothing_on(x.iter().map(sea_query::Alias::new));
                 }
             }
             OnConflictAction::DoUpdate(x) => {
