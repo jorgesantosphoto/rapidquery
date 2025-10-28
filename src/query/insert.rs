@@ -5,20 +5,83 @@ pub enum InsertValueSource {
     #[default]
     None,
     // Select(pyo3::Py<pyo3::PyAny>),
-    Single(Vec<pyo3::Py<pyo3::PyAny>>),
-    Many(Vec<Vec<pyo3::Py<pyo3::PyAny>>>),
+    Single(
+        // Always is `Vec<PyExpr>`
+        Vec<pyo3::Py<pyo3::PyAny>>,
+    ),
+    Many(
+        // Always is `Vec<Vec<PyExpr>>`
+        Vec<Vec<pyo3::Py<pyo3::PyAny>>>,
+    ),
 }
 
 #[derive(Default)]
 pub struct InsertInner {
     pub replace: bool,
+
+    // Always is `Option<TableName>`
     pub table: Option<pyo3::Py<pyo3::PyAny>>,
     pub columns: Vec<String>,
     pub source: InsertValueSource,
+
+    // Always is `Option<OnConflict>`
     pub on_conflict: Option<pyo3::Py<pyo3::PyAny>>,
     // pub returning: Option<pyo3::Py<pyo3::PyAny>>,
     pub default_values: Option<u32>,
     // pub with: Option<pyo3::Py<pyo3::PyAny>>,
+}
+
+impl InsertInner {
+    #[inline]
+    fn as_statement(&self, py: pyo3::Python) -> sea_query::InsertStatement {
+        let mut stmt = sea_query::InsertStatement::new();
+        if self.replace {
+            stmt.replace();
+        }
+
+        if let Some(x) = &self.table {
+            let x = unsafe { x.cast_bound_unchecked::<crate::common::PyTableName>(py) };
+            stmt.into_table(x.get().clone());
+        }
+
+        stmt.columns(self.columns.iter().map(|x| sea_query::Alias::new(x)));
+
+        match &self.source {
+            InsertValueSource::None => (),
+            InsertValueSource::Single(x) => unsafe {
+                stmt.values(
+                    x.iter()
+                        .map(|x| x.cast_bound_unchecked::<crate::expression::PyExpr>(py))
+                        .map(|x| x.get().inner.clone()),
+                )
+                .unwrap();
+            },
+            InsertValueSource::Many(x) => unsafe {
+                for y in x.iter() {
+                    stmt.values(
+                        y.iter()
+                            .map(|x| x.cast_bound_unchecked::<crate::expression::PyExpr>(py))
+                            .map(|x| x.get().inner.clone()),
+                    )
+                    .unwrap();
+                }
+            },
+        }
+
+        if let Some(on_conflict) = &self.on_conflict {
+            let on_conflict =
+                unsafe { on_conflict.cast_bound_unchecked::<super::on_conflict::PyOnConflict>(py) };
+
+            let x = on_conflict.get().inner.lock();
+            stmt.on_conflict(x.as_statement(py));
+        }
+
+        if let Some(rows) = self.default_values {
+            stmt.or_default_values_many(rows);
+        }
+
+        stmt
+    }
 }
 
 #[pyo3::pyclass(module = "rapidquery._lib", name = "Insert", frozen)]
@@ -251,5 +314,92 @@ impl PyInsert {
         }
 
         slf
+    }
+
+    fn build(
+        &self,
+        backend: &pyo3::Bound<'_, pyo3::PyAny>,
+    ) -> pyo3::PyResult<(String, pyo3::Py<pyo3::PyAny>)> {
+        let lock = self.inner.lock();
+        let stmt = lock.as_statement(backend.py());
+        drop(lock);
+
+        build_query_parts!(backend => build_collect_any_into(stmt))
+    }
+
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+        let lock = self.inner.lock();
+        let stmt = lock.as_statement(backend.py());
+        drop(lock);
+
+        build_query_string!(backend => build_collect_any_into(stmt))
+    }
+
+    fn __repr__(&self) -> String {
+        use std::io::Write;
+
+        let lock = self.inner.lock();
+        let mut s = Vec::<u8>::with_capacity(30);
+
+        write!(s, "<Insert").unwrap();
+
+        if lock.replace {
+            write!(s, " replace=True").unwrap();
+        }
+        if let Some(x) = &lock.table {
+            write!(s, " into={x}").unwrap();
+        }
+
+        if !lock.columns.is_empty() {
+            write!(s, " columns={:?}", lock.columns).unwrap();
+        }
+
+        if let Some(x) = &lock.on_conflict {
+            write!(s, " on_conflict={x}").unwrap();
+        }
+
+        match &lock.source {
+            InsertValueSource::None => {
+                if let Some(x) = lock.default_values {
+                    write!(s, " default_rows={x}").unwrap();
+                }
+            }
+            InsertValueSource::Single(x) => {
+                write!(s, " values=[").unwrap();
+
+                let n = x.len();
+                for (index, ix) in x.iter().enumerate() {
+                    if index + 1 == n {
+                        write!(s, "{ix}").unwrap();
+                    } else {
+                        write!(s, "{ix}, ").unwrap();
+                    }
+                }
+                write!(s, "]").unwrap();
+            }
+            InsertValueSource::Many(x) => {
+                write!(s, " values=[[").unwrap();
+
+                let n = x.len();
+                for (index_1, nested) in x.iter().enumerate() {
+                    let j = nested.len();
+                    for (index_2, val) in nested.iter().enumerate() {
+                        if index_2 + 1 == j {
+                            write!(s, "{val}").unwrap();
+                        } else {
+                            write!(s, "{val}, ").unwrap();
+                        }
+                    }
+
+                    if index_1 + 1 < n {
+                        write!(s, "], [").unwrap();
+                    }
+                }
+                write!(s, "]]").unwrap();
+            }
+        }
+
+        write!(s, ">").unwrap();
+        unsafe { String::from_utf8_unchecked(s) }
     }
 }

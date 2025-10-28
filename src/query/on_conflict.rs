@@ -19,8 +19,7 @@ pub enum OnConflictAction {
 
 #[derive(Default)]
 pub struct OnConflictInner {
-    // Always is `Vec<PyString | PyExpr>`
-    targets: Vec<pyo3::Py<pyo3::PyAny>>,
+    targets: Vec<String>,
     action: OnConflictAction,
 
     // Always is `Option<PyExpr>`
@@ -30,9 +29,48 @@ pub struct OnConflictInner {
     action_where: Option<pyo3::Py<pyo3::PyAny>>,
 }
 
+impl OnConflictInner {
+    #[inline]
+    #[optimize(speed)]
+    pub(super) fn as_statement(&self, py: pyo3::Python) -> sea_query::OnConflict {
+        let mut stmt =
+            sea_query::OnConflict::columns(self.targets.iter().map(|x| sea_query::Alias::new(x)));
+
+        match &self.action {
+            OnConflictAction::None => (),
+            OnConflictAction::DoNothing(x) => {
+                if x.is_empty() {
+                    stmt.do_nothing();
+                } else {
+                    stmt.do_nothing_on(x.iter().map(|x| sea_query::Alias::new(x)));
+                }
+            }
+            OnConflictAction::DoUpdate(x) => {
+                let mut columns = Vec::new();
+                let mut exprs = Vec::new();
+
+                for val in x.iter() {
+                    match val {
+                        OnConflictUpdate::Column(name) => columns.push(sea_query::Alias::new(name)),
+                        OnConflictUpdate::Expr(name, expr) => unsafe {
+                            let expr = expr.cast_bound_unchecked::<crate::expression::PyExpr>(py);
+                            exprs.push((sea_query::Alias::new(name), expr.get().inner.clone()));
+                        },
+                    }
+                }
+
+                stmt.update_columns(columns);
+                stmt.values(exprs);
+            }
+        }
+
+        stmt
+    }
+}
+
 #[pyo3::pyclass(module = "rapidquery._lib", name = "OnConflict", frozen)]
 pub struct PyOnConflict {
-    inner: parking_lot::Mutex<OnConflictInner>,
+    pub inner: parking_lot::Mutex<OnConflictInner>,
 }
 
 impl PyOnConflict {
@@ -121,26 +159,20 @@ impl PyOnConflict {
             });
         }
 
-        let mut tgs = Vec::with_capacity(targets.len());
+        let mut tgs: Vec<String> = Vec::with_capacity(targets.len());
 
         for col in targets.iter() {
             unsafe {
                 let col_type_ptr = pyo3::ffi::Py_TYPE(col.as_ptr());
 
-                if col_type_ptr == crate::typeref::EXPR_TYPE {
-                    tgs.push(col.unbind());
-                } else if col_type_ptr == crate::typeref::COLUMN_TYPE {
+                if col_type_ptr == crate::typeref::COLUMN_TYPE {
                     let col = col.cast_into_unchecked::<crate::column::PyColumn>();
-
-                    let name = col.get().inner.lock().name.clone();
-                    let name = pyo3::types::PyString::new(col.py(), &name);
-
-                    tgs.push(name.into_any().unbind());
+                    tgs.push(col.get().inner.lock().name.clone());
                 } else if pyo3::ffi::PyUnicode_CheckExact(col.as_ptr()) == 1 {
-                    tgs.push(col.unbind());
+                    tgs.push(col.extract::<String>().unwrap_unchecked());
                 } else {
                     return Err(typeerror!(
-                        "expected str or Column or Expr, got {:?}",
+                        "expected str or Column, got {:?}",
                         col.py(),
                         col.as_ptr()
                     ));

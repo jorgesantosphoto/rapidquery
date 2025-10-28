@@ -493,14 +493,10 @@ impl PyTable {
         let ix = lock.as_index_create_statements(backend.py());
         drop(lock);
 
-        let mut sql = build_schema!(
-            crate::backend::into_schema_builder => backend => build_any(stmt)
-        )? + ";\n";
+        let mut sql = build_schema!(backend => build_any(stmt))? + ";\n";
 
         for ix in ix.into_iter() {
-            sql += &build_schema!(
-                crate::backend::into_schema_builder => backend => build_any(ix)
-            )?;
+            sql += &build_schema!(backend => build_any(ix))?;
             sql.push(';');
             sql.push('\n');
         }

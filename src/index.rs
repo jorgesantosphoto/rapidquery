@@ -435,9 +435,7 @@ impl PyIndex {
         let stmt = lock.as_statement(backend.py());
         drop(lock);
 
-        build_schema!(
-            crate::backend::into_schema_builder => backend => build_any(stmt)
-        )
+        build_schema!(backend => build_any(stmt))
     }
 
     fn __repr__(&self) -> String {
@@ -628,9 +626,7 @@ impl PyDropIndex {
         let stmt = lock.as_statement(backend.py());
         drop(lock);
 
-        build_schema!(
-            crate::backend::into_schema_builder => backend => build_any(stmt)
-        )
+        build_schema!(backend => build_any(stmt))
     }
 
     fn __repr__(&self) -> String {
