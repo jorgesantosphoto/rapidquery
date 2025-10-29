@@ -16,14 +16,6 @@ pub enum InsertValueSource {
     ),
 }
 
-#[derive(Debug, Default)]
-pub enum ReturningClause {
-    #[default]
-    None,
-    All,
-    Columns(Vec<String>),
-}
-
 #[derive(Default)]
 pub struct InsertInner {
     pub replace: bool,
@@ -35,8 +27,9 @@ pub struct InsertInner {
 
     // Always is `Option<OnConflict>`
     pub on_conflict: Option<pyo3::Py<pyo3::PyAny>>,
-    pub returning_clause: ReturningClause,
+    pub returning_clause: super::returning::ReturningClause,
     pub default_values: Option<u32>,
+    // Comming Soon ...
     // pub with: Option<pyo3::Py<pyo3::PyAny>>,
 }
 
@@ -90,11 +83,11 @@ impl InsertInner {
         }
 
         match &self.returning_clause {
-            ReturningClause::None => (),
-            ReturningClause::All => {
+            super::returning::ReturningClause::None => (),
+            super::returning::ReturningClause::All => {
                 stmt.returning_all();
             }
-            ReturningClause::Columns(x) => {
+            super::returning::ReturningClause::Columns(x) => {
                 stmt.returning(sea_query::ReturningClause::Columns(
                     x.iter()
                         .map(sea_query::Alias::new)
@@ -366,7 +359,7 @@ impl PyInsert {
 
         {
             let mut lock = slf.inner.lock();
-            lock.returning_clause = ReturningClause::Columns(cols);
+            lock.returning_clause = super::returning::ReturningClause::Columns(cols);
         }
 
         Ok(slf)
@@ -375,7 +368,7 @@ impl PyInsert {
     fn returning_all(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
         {
             let mut lock = slf.inner.lock();
-            lock.returning_clause = ReturningClause::All;
+            lock.returning_clause = super::returning::ReturningClause::All;
         }
 
         slf
@@ -463,11 +456,11 @@ impl PyInsert {
         }
 
         match &lock.returning_clause {
-            ReturningClause::None => (),
-            ReturningClause::All => {
+            super::returning::ReturningClause::None => (),
+            super::returning::ReturningClause::All => {
                 write!(s, " returning_all").unwrap();
             }
-            ReturningClause::Columns(x) => {
+            super::returning::ReturningClause::Columns(x) => {
                 write!(s, " returning={x:?}").unwrap();
             }
         }

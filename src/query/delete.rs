@@ -1,0 +1,214 @@
+use pyo3::types::{PyAnyMethods, PyTupleMethods};
+use sea_query::IntoIden;
+
+#[derive(Default)]
+pub struct DeleteInner {
+    // Always is `Option<TableName>`
+    pub table: Option<pyo3::Py<pyo3::PyAny>>,
+
+    // Always is `Option<PyExpr>`
+    pub r#where: Option<pyo3::Py<pyo3::PyAny>>,
+    pub limit: Option<u64>,
+    pub returning_clause: super::returning::ReturningClause,
+    // pub orders: Option<pyo3::Py<pyo3::PyAny>>,
+
+    // Comming Soon ...
+    // pub with: Option<pyo3::Py<pyo3::PyAny>>,
+}
+
+impl DeleteInner {
+    fn as_statement(&self, py: pyo3::Python) -> sea_query::DeleteStatement {
+        let mut stmt = sea_query::DeleteStatement::new();
+
+        if let Some(x) = &self.table {
+            let x = unsafe { x.cast_bound_unchecked::<crate::common::PyTableName>(py) };
+            stmt.from_table(x.get().clone());
+        }
+
+        if let Some(x) = &self.r#where {
+            let x = unsafe { x.cast_bound_unchecked::<crate::expression::PyExpr>(py) };
+            stmt.and_where(x.get().inner.clone());
+        }
+
+        if let Some(n) = self.limit {
+            stmt.limit(n);
+        }
+
+        match &self.returning_clause {
+            super::returning::ReturningClause::None => (),
+            super::returning::ReturningClause::All => {
+                stmt.returning_all();
+            }
+            super::returning::ReturningClause::Columns(x) => {
+                stmt.returning(sea_query::ReturningClause::Columns(
+                    x.iter()
+                        .map(sea_query::Alias::new)
+                        .map(|x| sea_query::ColumnRef::Column(x.into_iden()))
+                        .collect(),
+                ));
+            }
+        }
+
+        stmt
+    }
+}
+
+#[pyo3::pyclass(module = "rapidquery._lib", name = "Delete", frozen)]
+pub struct PyDelete {
+    inner: parking_lot::Mutex<DeleteInner>,
+}
+
+#[pyo3::pymethods]
+impl PyDelete {
+    #[new]
+    fn new() -> Self {
+        Self {
+            inner: parking_lot::Mutex::new(Default::default()),
+        }
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    fn from_table<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        table: &'a pyo3::Bound<'_, pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
+        let table = {
+            if let Ok(x) = table.cast_exact::<crate::table::PyTable>() {
+                let guard = x.get().inner.lock();
+                guard.name.clone_ref(slf.py())
+            } else {
+                crate::common::PyTableName::from_pyobject(table)?
+            }
+        };
+
+        {
+            let mut lock = slf.inner.lock();
+            lock.table = Some(table);
+        }
+
+        Ok(slf)
+    }
+
+    fn limit(slf: pyo3::PyRef<'_, Self>, n: u64) -> pyo3::PyRef<'_, Self> {
+        {
+            let mut lock = slf.inner.lock();
+            lock.limit = Some(n);
+        }
+
+        slf
+    }
+
+    #[pyo3(signature=(*args))]
+    fn returning<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        args: &'a pyo3::Bound<'_, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
+        let mut cols = Vec::<String>::new();
+
+        unsafe {
+            for col in PyTupleMethods::iter(args) {
+                if pyo3::ffi::Py_TYPE(col.as_ptr()) == crate::typeref::COLUMN_TYPE {
+                    let col = col.cast_into_unchecked::<crate::column::PyColumn>();
+                    cols.push(col.get().inner.lock().name.clone());
+                } else if pyo3::ffi::PyUnicode_CheckExact(col.as_ptr()) == 1 {
+                    cols.push(col.extract::<String>().unwrap_unchecked());
+                } else {
+                    return Err(typeerror!(
+                        "expected Column or str, got {:?}",
+                        col.py(),
+                        col.as_ptr()
+                    ));
+                }
+            }
+        }
+
+        {
+            let mut lock = slf.inner.lock();
+            lock.returning_clause = super::returning::ReturningClause::Columns(cols);
+        }
+
+        Ok(slf)
+    }
+
+    fn returning_all(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+        {
+            let mut lock = slf.inner.lock();
+            lock.returning_clause = super::returning::ReturningClause::All;
+        }
+
+        slf
+    }
+
+    fn r#where<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        condition: pyo3::Bound<'a, pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
+        let condition = unsafe {
+            if pyo3::ffi::Py_TYPE(condition.as_ptr()) == crate::typeref::EXPR_TYPE {
+                condition.unbind()
+            } else {
+                let expr = crate::expression::PyExpr::try_from(condition)?;
+
+                pyo3::Py::new(slf.py(), expr).unwrap().into_any()
+            }
+        };
+
+        {
+            let mut lock = slf.inner.lock();
+            lock.r#where = Some(condition);
+        }
+
+        Ok(slf)
+    }
+
+    fn build(
+        &self,
+        backend: &pyo3::Bound<'_, pyo3::PyAny>,
+    ) -> pyo3::PyResult<(String, pyo3::Py<pyo3::PyAny>)> {
+        let lock = self.inner.lock();
+        let stmt = lock.as_statement(backend.py());
+        drop(lock);
+
+        build_query_parts!(backend => build_collect_any_into(stmt))
+    }
+
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+        let lock = self.inner.lock();
+        let stmt = lock.as_statement(backend.py());
+        drop(lock);
+
+        build_query_string!(backend => build_collect_any_into(stmt))
+    }
+
+    fn __repr__(&self) -> String {
+        use std::io::Write;
+
+        let lock = self.inner.lock();
+        let mut s = Vec::<u8>::with_capacity(30);
+
+        write!(s, "<Delete").unwrap();
+
+        if let Some(x) = &lock.table {
+            write!(s, " from_table={x}").unwrap();
+        }
+        if let Some(x) = lock.limit {
+            write!(s, " limit={x}").unwrap();
+        }
+        if let Some(x) = &lock.r#where {
+            write!(s, " where={x}").unwrap();
+        }
+
+        match &lock.returning_clause {
+            super::returning::ReturningClause::None => (),
+            super::returning::ReturningClause::All => {
+                write!(s, " returning_all").unwrap();
+            }
+            super::returning::ReturningClause::Columns(x) => {
+                write!(s, " returning={x:?}").unwrap();
+            }
+        }
+
+        write!(s, ">").unwrap();
+        unsafe { String::from_utf8_unchecked(s) }
+    }
+}
