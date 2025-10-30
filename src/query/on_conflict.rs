@@ -83,21 +83,11 @@ impl PyOnConflict {
 
         for (key, val) in kwds.iter() {
             unsafe {
-                if pyo3::ffi::Py_TYPE(val.as_ptr()) == crate::typeref::EXPR_TYPE {
-                    // Fast path
-                    action.push(OnConflictUpdate::Expr(
-                        key.extract::<String>().unwrap_unchecked(),
-                        val.cast_into_unchecked::<crate::expression::PyExpr>()
-                            .unbind()
-                            .into_any(),
-                    ));
-                    continue;
-                }
+                let val = crate::expression::PyExpr::from_bound_into_any(val)?;
 
-                let val = crate::expression::PyExpr::try_from(val)?;
                 action.push(OnConflictUpdate::Expr(
                     key.extract::<String>().unwrap_unchecked(),
-                    pyo3::Py::new(slf.py(), val).unwrap().into_any(),
+                    val,
                 ));
             }
         }

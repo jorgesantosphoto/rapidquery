@@ -131,17 +131,7 @@ impl PyInsert {
             for (key, value) in kwds.iter() {
                 let key = key.extract::<String>().unwrap_unchecked();
                 cols.push(key.clone());
-
-                let value_type_ptr = pyo3::ffi::Py_TYPE(value.as_ptr());
-
-                if value_type_ptr == crate::typeref::EXPR_TYPE {
-                    // Fast path for PyExpr type
-                    vals.push(value.unbind());
-                    continue;
-                }
-
-                let value = crate::expression::PyExpr::try_from(value)?;
-                vals.push(pyo3::Py::new(slf.py(), value).unwrap().into_any());
+                vals.push(crate::expression::PyExpr::from_bound_into_any(value)?);
             }
         }
 
@@ -185,16 +175,7 @@ impl PyInsert {
 
         unsafe {
             for value in PyTupleMethods::iter(args) {
-                let value_type_ptr = pyo3::ffi::Py_TYPE(value.as_ptr());
-
-                if value_type_ptr == crate::typeref::EXPR_TYPE {
-                    // Fast path for PyExpr type
-                    vals.push(value.unbind());
-                    continue;
-                }
-
-                let value = crate::expression::PyExpr::try_from(value)?;
-                vals.push(pyo3::Py::new(slf.py(), value).unwrap().into_any());
+                vals.push(crate::expression::PyExpr::from_bound_into_any(value)?);
             }
         }
 

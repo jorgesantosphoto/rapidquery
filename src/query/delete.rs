@@ -10,8 +10,9 @@ pub struct DeleteInner {
     pub r#where: Option<pyo3::Py<pyo3::PyAny>>,
     pub limit: Option<u64>,
     pub returning_clause: super::returning::ReturningClause,
-    // pub orders: Option<pyo3::Py<pyo3::PyAny>>,
 
+    // Always is `Vec<PyOrder>`
+    pub orders: Vec<pyo3::Py<pyo3::PyAny>>,
     // Comming Soon ...
     // pub with: Option<pyo3::Py<pyo3::PyAny>>,
 }
@@ -46,6 +47,24 @@ impl DeleteInner {
                         .map(|x| sea_query::ColumnRef::Column(x.into_iden()))
                         .collect(),
                 ));
+            }
+        }
+
+        for order in self.orders.iter() {
+            let order = unsafe { order.cast_bound_unchecked::<super::order::PyOrder>(py) };
+            let order = order.get();
+
+            let target = unsafe {
+                order
+                    .target
+                    .cast_bound_unchecked::<crate::expression::PyExpr>(py)
+            };
+            let target = target.get().inner.clone();
+
+            if let Some(x) = order.null_order {
+                stmt.order_by_expr_with_nulls(target, order.order.clone(), x);
+            } else {
+                stmt.order_by_expr(target, order.order.clone());
             }
         }
 
@@ -143,19 +162,35 @@ impl PyDelete {
         slf: pyo3::PyRef<'a, Self>,
         condition: pyo3::Bound<'a, pyo3::PyAny>,
     ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
-        let condition = unsafe {
-            if pyo3::ffi::Py_TYPE(condition.as_ptr()) == crate::typeref::EXPR_TYPE {
-                condition.unbind()
-            } else {
-                let expr = crate::expression::PyExpr::try_from(condition)?;
+        let condition = crate::expression::PyExpr::from_bound_into_any(condition)?;
 
-                pyo3::Py::new(slf.py(), expr).unwrap().into_any()
+        {
+            let mut lock = slf.inner.lock();
+            lock.r#where = Some(condition);
+        }
+
+        Ok(slf)
+    }
+
+    fn order_by<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        order: &'a pyo3::Bound<'a, pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
+        let order = unsafe {
+            if order.is_exact_instance_of::<super::order::PyOrder>() {
+                order.clone().unbind()
+            } else {
+                return Err(typeerror!(
+                    "expected Order, got {:?}",
+                    order.py(),
+                    order.as_ptr()
+                ));
             }
         };
 
         {
             let mut lock = slf.inner.lock();
-            lock.r#where = Some(condition);
+            lock.orders.push(order);
         }
 
         Ok(slf)
@@ -196,6 +231,17 @@ impl PyDelete {
         }
         if let Some(x) = &lock.r#where {
             write!(s, " where={x}").unwrap();
+        }
+
+        write!(s, " orders=[").unwrap();
+
+        let n = lock.orders.len();
+        for (index, expr) in lock.orders.iter().enumerate() {
+            if index + 1 == n {
+                write!(s, "{expr}]").unwrap();
+            } else {
+                write!(s, "{expr}, ").unwrap();
+            }
         }
 
         match &lock.returning_clause {

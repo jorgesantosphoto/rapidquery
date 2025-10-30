@@ -84,6 +84,9 @@ mod _lib {
     #[pymodule_export]
     use super::query::on_conflict::PyOnConflict;
 
+    #[pymodule_export]
+    use super::query::order::PyOrder;
+
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {
         m.add("INTERVAL_YEAR", sea_query::PgInterval::Year as u8)?;
@@ -125,6 +128,12 @@ mod _lib {
 
         m.add("INDEX_ORDER_ASC", sea_query::IndexOrder::Asc as u8)?;
         m.add("INDEX_ORDER_DESC", sea_query::IndexOrder::Desc as u8)?;
+
+        m.add("ORDER_ASC", 0)?;
+        m.add("ORDER_DESC", 1)?;
+
+        m.add("ORDER_NULL_FIRST", sea_query::NullOrdering::First as u8)?;
+        m.add("ORDER_NULL_LAST", sea_query::NullOrdering::Last as u8)?;
 
         super::typeref::initialize_typeref(m.py());
 
