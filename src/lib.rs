@@ -62,9 +62,6 @@ mod _lib {
     use super::foreign_key::PyForeignKey;
 
     #[pymodule_export]
-    use super::backend::{PyBackendMeta, PyMySQLBackend, PyPostgreSQLBackend, PySQLiteBackend};
-
-    #[pymodule_export]
     use super::index::{PyDropIndex, PyIndex};
 
     #[pymodule_export]

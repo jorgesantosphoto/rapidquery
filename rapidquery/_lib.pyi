@@ -4,6 +4,8 @@ import decimal
 import typing
 import uuid
 
+_BackendMeta = typing.Literal["sqlite", "mysql", "postgresql", "postgres"]
+
 class _AsteriskType:
     """
     Asterisk `"*"` - very useful for expression creating
@@ -12,74 +14,6 @@ class _AsteriskType:
     ...
 
 ASTERISK: typing.Final[_AsteriskType]
-
-class BackendMeta:
-    """
-    Base class for database backend implementations.
-
-    This abstract base class defines the interface for SQL query generation
-    backends that support different database systems (SQLite, MySQL, PostgreSQL).
-    Each backend handles the database-specific syntax and features for building
-    SQL statements dynamically.
-
-    Subclasses should implement database-specific query generation methods
-    and handle dialect differences for their respective database systems.
-    """
-
-    ...
-
-class SQLiteBackend(BackendMeta):
-    """
-    SQLite-specific query builder and schema builder backend.
-
-    Implements SQL generation tailored for SQLite's syntax and capabilities.
-    Handles SQLite-specific features like:
-    - AUTOINCREMENT for primary keys
-    - SQLite data type mapping
-    - SQLite-specific index syntax
-    - Constraint handling differences
-
-    This backend generates SQL statements that are compatible with SQLite's
-    dialect and feature set.
-    """
-
-    ...
-
-class MySQLBackend(BackendMeta):
-    """
-    MySQL-specific query builder and schema builder backend.
-
-    Implements SQL generation tailored for MySQL's syntax and capabilities.
-    Handles MySQL-specific features like:
-    - AUTO_INCREMENT for primary keys
-    - MySQL data type mapping and engine specifications
-    - MySQL index types (BTREE, HASH, FULLTEXT)
-    - Character set and collation handling
-    - MySQL-specific constraint syntax
-
-    This backend generates SQL statements that are compatible with MySQL's
-    dialect and feature set.
-    """
-
-    ...
-
-class PostgreSQLBackend(BackendMeta):
-    """
-    PostgreSQL-specific query builder and schema builder backend.
-
-    Implements SQL generation tailored for PostgreSQL's syntax and capabilities.
-    Handles PostgreSQL-specific features like:
-    - SERIAL/BIGSERIAL for auto-increment columns
-    - Advanced PostgreSQL data types (JSONB, UUID, INET, CIDR, etc.)
-    - PostgreSQL index types and advanced indexing features
-    - Schema-qualified object names
-    - PostgreSQL-specific constraint and extension syntax
-
-    This backend generates SQL statements that are compatible with PostgreSQL's
-    dialect and feature set.
-    """
-
-    ...
 
 T = typing.TypeVar("T")
 
@@ -671,7 +605,7 @@ class AdaptedValue:
         """
         ...
 
-    def build(self, backend: BackendMeta) -> str:
+    def build(self, backend: _BackendMeta) -> str:
         """
         Converts the adapted value to its SQL string representation.
         """
@@ -1318,7 +1252,7 @@ class Expr:
         """
         ...
 
-    def build(self, backend: BackendMeta) -> str:
+    def build(self, backend: _BackendMeta) -> str:
         """
         Convert the expression to its SQL string representation.
 
@@ -1613,7 +1547,7 @@ class FunctionCall:
         """
         ...
 
-    def build(self, backend: BackendMeta) -> str:
+    def build(self, backend: _BackendMeta) -> str:
         """
         Convert the function call to its SQL string representation.
 
@@ -2192,7 +2126,7 @@ class Index:
         """
         ...
 
-    def build(self, backend: BackendMeta) -> str:
+    def build(self, backend: _BackendMeta) -> str:
         """
         Build a CREATE INDEX SQL string representation.
 
@@ -2307,7 +2241,7 @@ class Table:
     @property
     def name(self) -> TableName: ...
     def get_column(self, name: str) -> Column: ...
-    def build(self, backend: BackendMeta) -> str: ...
+    def build(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
 class DropTable:
@@ -2325,7 +2259,7 @@ class DropTable:
     ) -> Self: ...
     def __copy__(self) -> Self: ...
     def copy(self) -> Self: ...
-    def build(self, backend: BackendMeta) -> str: ...
+    def build(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
 class RenameTable:
@@ -2339,7 +2273,7 @@ class RenameTable:
     ) -> Self: ...
     def __copy__(self) -> Self: ...
     def copy(self) -> Self: ...
-    def build(self, backend: BackendMeta) -> str: ...
+    def build(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
 class TruncateTable:
@@ -2351,7 +2285,7 @@ class TruncateTable:
     ) -> Self: ...
     def __copy__(self) -> Self: ...
     def copy(self) -> Self: ...
-    def build(self, backend: BackendMeta) -> str: ...
+    def build(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
 class AlterTableOptionMeta:
@@ -2407,7 +2341,7 @@ class AlterTable:
     def add_option(self, option: AlterTableOptionMeta) -> None: ...
     def __copy__(self) -> Self: ...
     def copy(self) -> Self: ...
-    def build(self, backend: BackendMeta) -> str: ...
+    def build(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
 class OnConflict:
@@ -2454,8 +2388,10 @@ class Insert:
     def on_conflict(self, action: OnConflict) -> Self: ...
     def returning(self, *args: typing.Union[Column, str]) -> Self: ...
     def returning_all(self) -> Self: ...
-    def build(self, backend: BackendMeta) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]: ...
-    def to_sql(self, backend: BackendMeta) -> str: ...
+    def build(
+        self, backend: _BackendMeta
+    ) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]: ...
+    def to_sql(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...
 
 class Delete:
@@ -2466,6 +2402,8 @@ class Delete:
     def returning_all(self) -> Self: ...
     def where(self, condition: _ExprValue) -> Self: ...
     def order_by(self, order: Order) -> Self: ...
-    def build(self, backend: BackendMeta) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]: ...
-    def to_sql(self, backend: BackendMeta) -> str: ...
+    def build(
+        self, backend: _BackendMeta
+    ) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]: ...
+    def to_sql(self, backend: _BackendMeta) -> str: ...
     def __repr__(self) -> str: ...

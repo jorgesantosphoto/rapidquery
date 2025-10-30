@@ -60,16 +60,7 @@ macro_rules! typeerror {
 #[macro_export]
 macro_rules! prepare_sql {
     ($converter:expr => $backend:expr => $method:ident($value:expr, &mut $sql:expr)) => {{
-        let builder = match $converter($backend) {
-            Some(x) => x,
-            None => {
-                return Err(typeerror!(
-                    "expected BackendMeta, got {}",
-                    $backend.py(),
-                    $backend.as_ptr()
-                ))
-            }
-        };
+        let builder = $converter($backend)?;
 
         let assert_unwind = std::panic::AssertUnwindSafe(|| builder.$method($value, &mut $sql));
 
@@ -81,16 +72,7 @@ macro_rules! prepare_sql {
 #[macro_export]
 macro_rules! build_schema {
     ($backend:expr => $build_func:ident($stmt:expr)) => {{
-        let builder = match $crate::backend::into_schema_builder($backend) {
-            Some(x) => x,
-            None => {
-                return Err(typeerror!(
-                    "expected BackendMeta, got {}",
-                    $backend.py(),
-                    $backend.as_ptr()
-                ))
-            }
-        };
+        let builder = $crate::backend::into_schema_builder($backend)?;
 
         let assert_unwind = std::panic::AssertUnwindSafe(|| $stmt.$build_func(&*builder));
 
@@ -102,16 +84,7 @@ macro_rules! build_schema {
 #[macro_export]
 macro_rules! build_query_parts {
     ($backend:expr => $build_func:ident($stmt:expr)) => {{
-        let builder = match $crate::backend::into_query_builder($backend) {
-            Some(x) => x,
-            None => {
-                return Err(typeerror!(
-                    "expected BackendMeta, got {}",
-                    $backend.py(),
-                    $backend.as_ptr()
-                ))
-            }
-        };
+        let builder = $crate::backend::into_query_builder($backend)?;
 
         let (placeholder, numbered) = builder.placeholder();
         let mut sql = sea_query::SqlWriterValues::new(placeholder, numbered);
@@ -158,16 +131,7 @@ macro_rules! build_query_parts {
 #[macro_export]
 macro_rules! build_query_string {
     ($backend:expr => $build_func:ident($stmt:expr)) => {{
-        let builder = match $crate::backend::into_query_builder($backend) {
-            Some(x) => x,
-            None => {
-                return Err(typeerror!(
-                    "expected BackendMeta, got {}",
-                    $backend.py(),
-                    $backend.as_ptr()
-                ))
-            }
-        };
+        let builder = $crate::backend::into_query_builder($backend)?;
 
         let mut sql = String::with_capacity(255);
 

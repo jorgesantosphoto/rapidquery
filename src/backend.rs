@@ -1,64 +1,37 @@
-use pyo3::types::PyAnyMethods;
-
-#[pyo3::pyclass(module = "rapidquery._lib", name = "BackendMeta", frozen, subclass)]
-pub struct PyBackendMeta;
-
-#[pyo3::pymethods]
-impl PyBackendMeta {
-    #[new]
-    fn new() -> pyo3::PyResult<Self> {
-        Err(
-            pyo3::PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>("don't use directly BackendMeta class; use PostgreSQLBackend, MySQLBackend, or SQLiteBackend")
-        )
-    }
-}
-
-#[pyo3::pyclass(module = "rapidquery._lib", name = "PostgreSQLBackend", frozen, extends=PyBackendMeta)]
-pub struct PyPostgreSQLBackend;
-
-#[pyo3::pymethods]
-impl PyPostgreSQLBackend {
-    #[new]
-    fn new() -> (Self, PyBackendMeta) {
-        (Self, PyBackendMeta)
-    }
-}
-
-#[pyo3::pyclass(module = "rapidquery._lib", name = "MySQLBackend", frozen, extends=PyBackendMeta)]
-pub struct PyMySQLBackend;
-
-#[pyo3::pymethods]
-impl PyMySQLBackend {
-    #[new]
-    fn new() -> (Self, PyBackendMeta) {
-        (Self, PyBackendMeta)
-    }
-}
-
-#[pyo3::pyclass(module = "rapidquery._lib", name = "SQLiteBackend", frozen, extends=PyBackendMeta)]
-pub struct PySQLiteBackend;
-
-#[pyo3::pymethods]
-impl PySQLiteBackend {
-    #[new]
-    fn new() -> (Self, PyBackendMeta) {
-        (Self, PyBackendMeta)
-    }
-}
-
 #[inline]
 #[optimize(speed)]
 pub(crate) fn into_query_builder(
     object: &pyo3::Bound<'_, pyo3::PyAny>,
-) -> Option<Box<dyn sea_query::QueryBuilder>> {
-    if object.is_exact_instance_of::<PySQLiteBackend>() {
-        Some(Box::new(sea_query::SqliteQueryBuilder))
-    } else if object.is_exact_instance_of::<PyMySQLBackend>() {
-        Some(Box::new(sea_query::MysqlQueryBuilder))
-    } else if object.is_exact_instance_of::<PyPostgreSQLBackend>() {
-        Some(Box::new(sea_query::PostgresQueryBuilder))
+) -> pyo3::PyResult<Box<dyn sea_query::QueryBuilder>> {
+    let val = unsafe {
+        if pyo3::ffi::PyUnicode_CheckExact(object.as_ptr()) == 0 {
+            return Err(typeerror!(
+                "expected str, got {:?}",
+                object.py(),
+                object.as_ptr()
+            ));
+        }
+
+        let mut size: pyo3::ffi::Py_ssize_t = 0;
+        let c_str = pyo3::ffi::PyUnicode_AsUTF8AndSize(object.as_ptr(), &mut size);
+
+        if c_str.is_null() || size < 0 {
+            return Err(pyo3::PyErr::fetch(object.py()));
+        } else {
+            std::ffi::CStr::from_ptr(c_str).to_string_lossy()
+        }
+    };
+
+    if val == "sqlite" {
+        Ok(Box::new(sea_query::SqliteQueryBuilder))
+    } else if val == "mysql" {
+        Ok(Box::new(sea_query::MysqlQueryBuilder))
+    } else if val == "postgresql" || val == "postgres" {
+        Ok(Box::new(sea_query::PostgresQueryBuilder))
     } else {
-        None
+        Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            format!("invalid backend value, got {val}"),
+        ))
     }
 }
 
@@ -66,14 +39,35 @@ pub(crate) fn into_query_builder(
 #[optimize(speed)]
 pub(crate) fn into_schema_builder(
     object: &pyo3::Bound<'_, pyo3::PyAny>,
-) -> Option<Box<dyn sea_query::SchemaBuilder>> {
-    if object.is_exact_instance_of::<PySQLiteBackend>() {
-        Some(Box::new(sea_query::SqliteQueryBuilder))
-    } else if object.is_exact_instance_of::<PyMySQLBackend>() {
-        Some(Box::new(sea_query::MysqlQueryBuilder))
-    } else if object.is_exact_instance_of::<PyPostgreSQLBackend>() {
-        Some(Box::new(sea_query::PostgresQueryBuilder))
+) -> pyo3::PyResult<Box<dyn sea_query::SchemaBuilder>> {
+    let val = unsafe {
+        if pyo3::ffi::PyUnicode_CheckExact(object.as_ptr()) == 0 {
+            return Err(typeerror!(
+                "expected str, got {:?}",
+                object.py(),
+                object.as_ptr()
+            ));
+        }
+
+        let mut size: pyo3::ffi::Py_ssize_t = 0;
+        let c_str = pyo3::ffi::PyUnicode_AsUTF8AndSize(object.as_ptr(), &mut size);
+
+        if c_str.is_null() || size < 0 {
+            return Err(pyo3::PyErr::fetch(object.py()));
+        } else {
+            std::ffi::CStr::from_ptr(c_str).to_string_lossy()
+        }
+    };
+
+    if val == "sqlite" {
+        Ok(Box::new(sea_query::SqliteQueryBuilder))
+    } else if val == "mysql" {
+        Ok(Box::new(sea_query::MysqlQueryBuilder))
+    } else if val == "postgresql" || val == "postgres" {
+        Ok(Box::new(sea_query::PostgresQueryBuilder))
     } else {
-        None
+        Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            format!("invalid backend value, got {val}"),
+        ))
     }
 }
