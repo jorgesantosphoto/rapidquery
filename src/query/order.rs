@@ -6,15 +6,6 @@ pub struct PyOrder {
     pub null_order: Option<sea_query::NullOrdering>,
 }
 
-// impl PyOrder {
-//     fn as_statement(&self, py: pyo3::Python) -> sea_query::OrderExpr {
-//         let target = unsafe{self.target.cast_bound_unchecked::<crate::expression::PyExpr>(py)};
-//         let target = target.get().inner.clone();
-
-//         sea_query::OrderExpr::
-//     }
-// }
-
 #[pyo3::pymethods]
 impl PyOrder {
     #[new]

@@ -17,7 +17,9 @@ impl From<sea_query::SimpleExpr> for PyExpr {
 impl PyExpr {
     #[inline]
     #[optimize(speed)]
-    pub fn from_bound_into_any(x: pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+    pub fn from_bound_into_any(
+        x: pyo3::Bound<'_, pyo3::PyAny>,
+    ) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         unsafe {
             if pyo3::ffi::Py_TYPE(x.as_ptr()) == crate::typeref::EXPR_TYPE {
                 Ok(x.unbind())

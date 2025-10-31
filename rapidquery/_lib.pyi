@@ -4,7 +4,7 @@ import decimal
 import typing
 import uuid
 
-_BackendMeta = typing.Literal["sqlite", "mysql", "postgresql", "postgres"]
+_Backends = typing.Literal["sqlite", "mysql", "postgresql", "postgres"]
 
 class _AsteriskType:
     """
@@ -605,7 +605,7 @@ class AdaptedValue:
         """
         ...
 
-    def build(self, backend: _BackendMeta) -> str:
+    def build(self, backend: _Backends) -> str:
         """
         Converts the adapted value to its SQL string representation.
         """
@@ -732,7 +732,7 @@ class Expr:
         # Result: "id" IN (1, 2, 3)
 
         # Complex expression with functions
-        e = Expr.func(FunctionCall.upper(Expr.col("name"))) == "JOHN"
+        e = FunctionCall.upper(Expr.col("name")).to_expr() == "JOHN"
         e.build(PostgreSQLBackend())
         # Result: UPPER("name") = 'JOHN'
     """
@@ -1252,7 +1252,7 @@ class Expr:
         """
         ...
 
-    def build(self, backend: _BackendMeta) -> str:
+    def build(self, backend: _Backends) -> str:
         """
         Convert the expression to its SQL string representation.
 
@@ -1547,7 +1547,7 @@ class FunctionCall:
         """
         ...
 
-    def build(self, backend: _BackendMeta) -> str:
+    def build(self, backend: _Backends) -> str:
         """
         Convert the function call to its SQL string representation.
 
@@ -2126,7 +2126,7 @@ class Index:
         """
         ...
 
-    def build(self, backend: _BackendMeta) -> str:
+    def build(self, backend: _Backends) -> str:
         """
         Build a CREATE INDEX SQL string representation.
 
@@ -2211,17 +2211,62 @@ class DropIndex:
         ...
 
 class Table:
+    """
+    Represents a complete database table definition.
+
+    This class encapsulates all aspects of a table structure including:
+    - Column definitions with their types and constraints
+    - Indexes for query optimization
+    - Foreign key relationships for referential integrity
+    - Check constraints for data validation
+    - Table-level options like engine, collation, and character set
+
+    Used to generate CREATE TABLE SQL statements with full schema specifications.
+
+    Example:
+        >>> Table(
+        ...     "users",
+        ...     columns=[
+        ...         Column("id", Integer, primary_key=True, auto_increment=True),
+        ...         Column("email", String(255), unique=True, nullable=False)
+        ...     ],
+        ...     indexes=[Index(["email"])],
+        ...     if_not_exists=True
+        ... )
+    """
+
     columns: typing.Sequence[Column]
+    """The columns that make up this table."""
+
     indexes: typing.Sequence[Index]
+    """Indexes defined on this table for query optimization."""
+
     foreign_keys: typing.Sequence[ForeignKey]
+    """Foreign key constraints defining relationships with other tables."""
+
     checks: typing.Sequence[Expr]
+    """Check constraints for validating data integrity."""
+
     if_not_exists: bool
+    """Whether to use IF NOT EXISTS clause to avoid errors if table exists."""
+
     temporary: bool
+    """Whether this is a temporary table that exists only for the session."""
+
     comment: typing.Optional[str]
+    """Comment describing the purpose of this table."""
+
     engine: typing.Optional[str]
+    """Storage engine for the table (e.g., InnoDB, MyISAM for MySQL)."""
+
     collate: typing.Optional[str]
+    """Collation for string comparisons and sorting in this table."""
+
     character_set: typing.Optional[str]
+    """Character set encoding for text data in this table."""
+
     extra: typing.Optional[str]
+    """Additional table-specific options for the CREATE TABLE statement."""
 
     def __new__(
         cls,
@@ -2237,18 +2282,94 @@ class Table:
         collate: typing.Optional[str] = ...,
         character_set: typing.Optional[str] = ...,
         extra: typing.Optional[str] = ...,
-    ) -> Self: ...
+    ) -> Self:
+        """
+        Create a new Table definition.
+
+        Args:
+            name: The table name, optionally schema-qualified
+            columns: List of column definitions
+            indexes: List of index definitions
+            foreign_keys: List of foreign key constraints
+            checks: List of check constraint expressions
+            if_not_exists: Whether to use IF NOT EXISTS clause
+            temporary: Whether to create a temporary table
+            comment: Table description comment
+            engine: Storage engine specification
+            collate: Collation specification
+            character_set: Character set specification
+            extra: Additional SQL specifications
+
+        Returns:
+            A new Table instance
+        """
+        ...
+
     @property
-    def name(self) -> TableName: ...
-    def get_column(self, name: str) -> Column: ...
-    def build(self, backend: _BackendMeta) -> str: ...
-    def __repr__(self) -> str: ...
+    def name(self) -> TableName:
+        """The name of this table."""
+        ...
+
+    def get_column(self, name: str) -> Column:
+        """
+        Retrieve a column definition by name.
+
+        Args:
+            name: The column name to find
+
+        Returns:
+            The Column instance with the specified name
+
+        Raises:
+            KeyError: If no column with the given name exists
+        """
+        ...
+
+    def build(self, backend: _Backends) -> str:
+        """
+        Build a CREATE TABLE SQL string representation.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the table creation statement
+        """
+        ...
+
+    def __repr__(self) -> str:
+        """
+        Return a developer-friendly string representation.
+
+        Returns:
+            A string showing the table definition
+        """
+        ...
 
 class DropTable:
+    """
+    Represents a DROP TABLE SQL statement.
+
+    Builds table deletion statements with support for:
+    - Conditional deletion (IF EXISTS) to avoid errors
+    - CASCADE to drop dependent objects
+    - RESTRICT to prevent deletion if dependencies exist
+
+    Example:
+        >>> DropTable("old_users", if_exists=True, cascade=True)
+    """
+
     name: TableName
+    """The name of the table to drop."""
+
     if_exists: bool
+    """Whether to use IF EXISTS clause to avoid errors if table doesn't exist."""
+
     restrict: bool
+    """Whether to use RESTRICT to prevent dropping if dependencies exist."""
+
     cascade: bool
+    """Whether to use CASCADE to drop dependent objects automatically."""
 
     def __new__(
         cls,
@@ -2256,74 +2377,313 @@ class DropTable:
         if_exists: bool = ...,
         restrict: bool = ...,
         cascade: bool = ...,
-    ) -> Self: ...
-    def __copy__(self) -> Self: ...
-    def copy(self) -> Self: ...
-    def build(self, backend: _BackendMeta) -> str: ...
-    def __repr__(self) -> str: ...
+    ) -> Self:
+        """
+        Create a new DropTable statement.
+
+        Args:
+            name: The table name to drop
+            if_exists: Whether to use IF EXISTS clause
+            restrict: Whether to use RESTRICT mode
+            cascade: Whether to use CASCADE mode
+
+        Returns:
+            A new DropTable instance
+        """
+        ...
+
+    def __copy__(self) -> Self:
+        """
+        Create a shallow copy of this DropTable.
+        """
+        ...
+
+    def copy(self) -> Self:
+        """
+        Create a copy of this DropTable.
+
+        Returns:
+            A new DropTable instance with the same values
+        """
+        ...
+
+    def build(self, backend: _Backends) -> str:
+        """
+        Build a DROP TABLE SQL string representation.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the drop table statement
+        """
+        ...
+
+    def __repr__(self) -> str:
+        """
+        Return a developer-friendly string representation.
+
+        Returns:
+            A string showing the drop table statement
+        """
+        ...
 
 class RenameTable:
+    """
+    Represents a RENAME TABLE SQL statement.
+
+    Changes the name of an existing table to a new name. Both names can be
+    schema-qualified if needed.
+
+    Example:
+        >>> RenameTable("old_users", "users")
+        >>> RenameTable("public.old_users", "archive.users")
+    """
+
     from_name: TableName
+    """The current name of the table."""
+
     to_name: TableName
+    """The new name for the table."""
 
     def __new__(
         cls,
         from_name: typing.Union[str, TableName],
         to_name: typing.Union[str, TableName],
-    ) -> Self: ...
-    def __copy__(self) -> Self: ...
-    def copy(self) -> Self: ...
-    def build(self, backend: _BackendMeta) -> str: ...
-    def __repr__(self) -> str: ...
+    ) -> Self:
+        """
+        Create a new RenameTable statement.
+
+        Args:
+            from_name: The current table name
+            to_name: The new table name
+
+        Returns:
+            A new RenameTable instance
+        """
+        ...
+
+    def __copy__(self) -> Self:
+        """
+        Create a shallow copy of this RenameTable.
+        """
+        ...
+
+    def copy(self) -> Self:
+        """
+        Create a copy of this RenameTable.
+
+        Returns:
+            A new RenameTable instance with the same values
+        """
+        ...
+
+    def build(self, backend: _Backends) -> str:
+        """
+        Build a RENAME TABLE SQL string representation.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the rename table statement
+        """
+        ...
+
+    def __repr__(self) -> str:
+        """
+        Return a developer-friendly string representation.
+
+        Returns:
+            A string showing the rename table statement
+        """
+        ...
 
 class TruncateTable:
+    """
+    Represents a TRUNCATE TABLE SQL statement.
+
+    Quickly removes all rows from a table, typically faster than DELETE
+    and with different transaction and trigger behavior depending on the
+    database system.
+
+    Example:
+        >>> TruncateTable("temp_data")
+    """
+
     name: TableName
+    """The name of the table to truncate."""
 
     def __new__(
         cls,
         name: typing.Union[str, TableName],
-    ) -> Self: ...
-    def __copy__(self) -> Self: ...
-    def copy(self) -> Self: ...
-    def build(self, backend: _BackendMeta) -> str: ...
-    def __repr__(self) -> str: ...
+    ) -> Self:
+        """
+        Create a new TruncateTable statement.
+
+        Args:
+            name: The table name to truncate
+
+        Returns:
+            A new TruncateTable instance
+        """
+        ...
+
+    def __copy__(self) -> Self:
+        """
+        Create a shallow copy of this TruncateTable.
+        """
+        ...
+
+    def copy(self) -> Self:
+        """
+        Create a copy of this TruncateTable.
+
+        Returns:
+            A new TruncateTable instance with the same values
+        """
+        ...
+
+    def build(self, backend: _Backends) -> str:
+        """
+        Build a TRUNCATE TABLE SQL string representation.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the truncate table statement
+        """
+        ...
+
+    def __repr__(self) -> str:
+        """
+        Return a developer-friendly string representation.
+
+        Returns:
+            A string showing the truncate table statement
+        """
+        ...
 
 class AlterTableOptionMeta:
+    """
+    Base class for all ALTER TABLE operation types.
+
+    This abstract base class represents the different types of modifications
+    that can be made to an existing table structure, such as adding/dropping
+    columns, modifying column definitions, or managing foreign keys.
+    """
+
     def __new__(cls): ...
+    def __repr__(self) -> str:
+        """
+        Return a developer-friendly string representation.
+        """
+        ...
 
 class AlterTableAddColumnOption(AlterTableOptionMeta):
+    """
+    ALTER TABLE operation to add a new column.
+
+    Adds a column to an existing table with optional IF NOT EXISTS clause
+    to prevent errors if the column already exists.
+
+    Example:
+        >>> AlterTableAddColumnOption(
+        ...     Column("created_at", Timestamp, nullable=False),
+        ...     if_not_exists=True
+        ... )
+    """
+
     def __new__(cls, column: Column, if_not_exists: bool) -> Self: ...
     @property
     def column(self) -> Column: ...
     @property
     def if_not_exists(self) -> bool: ...
-    def __repr__(self) -> str: ...
 
 class AlterTableAddForeignKeyOption(AlterTableOptionMeta):
+    """
+    ALTER TABLE operation to add a foreign key constraint.
+
+    Adds referential integrity between tables by creating a foreign key
+    relationship on an existing table.
+
+    Example:
+        >>> AlterTableAddForeignKeyOption(
+        ...     ForeignKey(
+        ...         from_columns=["user_id"],
+        ...         to_columns=["id"],
+        ...         to_table="users",
+        ...         on_delete="CASCADE"
+        ...     )
+        ... )
+    """
+
     def __new__(cls, foreign_key: ForeignKey) -> Self: ...
     @property
     def foreign_key(self) -> ForeignKey: ...
     def __repr__(self) -> str: ...
 
 class AlterTableDropColumnOption(AlterTableOptionMeta):
+    """
+    ALTER TABLE operation to drop an existing column.
+
+    Removes a column from the table. This operation may fail if the column
+    is referenced by other database objects.
+
+    Example:
+        >>> AlterTableDropColumnOption("deprecated_field")
+    """
+
     def __new__(cls, name: str) -> Self: ...
     @property
     def name(self) -> str: ...
     def __repr__(self) -> str: ...
 
 class AlterTableDropForeignKeyOption(AlterTableOptionMeta):
+    """
+    ALTER TABLE operation to drop a foreign key constraint.
+
+    Removes a foreign key relationship by its constraint name.
+
+    Example:
+        >>> AlterTableDropForeignKeyOption("fk_user_posts")
+    """
+
     def __new__(cls, name: str) -> Self: ...
     @property
     def name(self) -> str: ...
     def __repr__(self) -> str: ...
 
 class AlterTableModifyColumnOption(AlterTableOptionMeta):
+    """
+    ALTER TABLE operation to modify a column definition.
+
+    Changes properties of an existing column such as type, nullability,
+    default value, or other constraints.
+
+    Example:
+        >>> AlterTableModifyColumnOption(
+        ...     Column("email", String(512), nullable=False)
+        ... )
+    """
+
     def __new__(cls, column: Column) -> Self: ...
     @property
     def column(self) -> Column: ...
     def __repr__(self) -> str: ...
 
 class AlterTableRenameColumnOption(AlterTableOptionMeta):
+    """
+    ALTER TABLE operation to rename a column.
+
+    Changes the name of an existing column without modifying its type
+    or constraints.
+
+    Example:
+        >>> AlterTableRenameColumnOption("old_name", "new_name")
+    """
+
     def __new__(cls, from_name: str, to_name: str) -> Self: ...
     @property
     def from_name(self) -> str: ...
@@ -2332,27 +2692,178 @@ class AlterTableRenameColumnOption(AlterTableOptionMeta):
     def __repr__(self) -> str: ...
 
 class AlterTable:
+    """
+    Represents an ALTER TABLE SQL statement.
+
+    Provides a flexible way to modify existing table structures by applying
+    one or more alteration operations such as adding/dropping columns,
+    modifying column definitions, or managing constraints.
+
+    Multiple operations can be batched together in a single ALTER TABLE
+    statement for efficiency.
+
+    Example:
+        >>> AlterTable(
+        ...     "users",
+        ...     options=[
+        ...         AlterTableAddColumnOption(Column("status", String(20))),
+        ...         AlterTableModifyColumnOption(Column("email", String(512)))
+        ...     ]
+        ... )
+    """
+
     name: TableName
+    """The name of the table to alter."""
+
     options: typing.Sequence[AlterTableOptionMeta]
+    """The list of alteration operations to apply."""
 
     def __new__(
         cls, name: typing.Union[str, TableName], options: typing.Sequence[AlterTableOptionMeta]
-    ) -> Self: ...
-    def add_option(self, option: AlterTableOptionMeta) -> None: ...
-    def __copy__(self) -> Self: ...
-    def copy(self) -> Self: ...
-    def build(self, backend: _BackendMeta) -> str: ...
+    ) -> Self:
+        """
+        Create a new AlterTable statement.
+
+        Args:
+            name: The table name to alter
+            options: List of alteration operations
+
+        Returns:
+            A new AlterTable instance
+        """
+        ...
+
+    def add_option(self, option: AlterTableOptionMeta) -> None:
+        """
+        Add an alteration operation to this ALTER TABLE statement.
+
+        Args:
+            option: The alteration operation to add
+        """
+        ...
+
+    def __copy__(self) -> Self:
+        """
+        Create a shallow copy of this AlterTable.
+        """
+        ...
+
+    def copy(self) -> Self:
+        """
+        Create a copy of this AlterTable.
+
+        Returns:
+            A new AlterTable instance with the same values
+        """
+        ...
+
+    def build(self, backend: _Backends) -> str:
+        """
+        Build an ALTER TABLE SQL string representation.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the alter table statement
+        """
+        ...
+
     def __repr__(self) -> str: ...
 
 class OnConflict:
-    def __new__(cls, *targets: typing.Union[str, Column]) -> Self: ...
-    def do_nothing(self, *keys: typing.Union[str, Column]) -> Self: ...
+    """
+    Specifies conflict resolution behavior for INSERT statements.
+
+    Handles situations where an INSERT would violate a unique constraint
+    or primary key. Supports various strategies:
+    - DO NOTHING: Skip the conflicting row
+    - DO UPDATE: Update the existing row with new values
+
+    This corresponds to INSERT ... ON CONFLICT in PostgreSQL and
+    INSERT ... ON DUPLICATE KEY UPDATE in MySQL.
+
+    Example:
+        >>> OnConflict("email").do_update("name")
+        >>> OnConflict("id", "version").do_nothing()
+    """
+
+    def __new__(cls, *targets: typing.Union[str, Column]) -> Self:
+        """
+        Create a new conflict resolution specification.
+
+        Args:
+            *targets: Column names or Column objects that define the conflict constraint
+
+        Returns:
+            A new OnConflict instance
+        """
+        ...
+
+    def do_nothing(self, *keys: typing.Union[str, Column]) -> Self:
+        """
+        Specify DO NOTHING action for conflicts.
+
+        When a conflict occurs, the conflicting row will be skipped.
+
+        Args:
+            *keys: Provide primary keys if you are using MySQL, for MySQL specific polyfill.
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
     @typing.overload
-    def do_update(self, *keys: typing.Union[str, Column]) -> Self: ...
+    def do_update(self, *keys: typing.Union[str, Column]) -> Self:
+        """
+        Specify DO UPDATE action for conflicts using column names.
+
+        Args:
+            *keys: Columns to update on conflict
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
     @typing.overload
-    def do_update(self, **kwds: _ExprValue) -> Self: ...
-    def target_where(self, condition: Expr) -> Self: ...
-    def action_where(self, condition: Expr) -> Self: ...
+    def do_update(self, **kwds: _ExprValue) -> Self:
+        """
+        Specify DO UPDATE action for conflicts with explicit values.
+
+        Args:
+            **kwds: Column names and their new values
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def target_where(self, condition: Expr) -> Self:
+        """
+        Add a WHERE clause to the conflict target (partial unique index).
+
+        Args:
+            condition: The condition that must match for the conflict to apply
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def action_where(self, condition: Expr) -> Self:
+        """
+        Add a WHERE clause to the conflict action (conditional update).
+
+        Args:
+            condition: The condition that must be true for the update to occur
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
     def __repr__(self) -> str: ...
 
 ORDER_ASC: typing.Final[int]
@@ -2361,49 +2872,333 @@ ORDER_NULL_FIRST: typing.Final[int]
 ORDER_NULL_LAST: typing.Final[int]
 
 class Order:
+    """
+    Specifies ordering criteria for query results.
+
+    Defines how rows should be sorted in SELECT queries, including:
+    - The expression to sort by
+    - Sort direction (ascending or descending)
+    - NULL value positioning (first or last)
+
+    Example:
+        >>> Order(Expr.col("created_at"), ORDER_DESC, ORDER_NULL_LAST)
+        >>> Order("name", ORDER_ASC)
+    """
+
     def __new__(
         cls,
         target: _ExprValue,
         order: int,
         null_order: typing.Optional[int] = ...,
-    ) -> Self: ...
+    ) -> Self:
+        """
+        Create a new ordering specification.
+
+        Args:
+            target: The expression to sort by
+            order: Sort direction (ORDER_ASC or ORDER_DESC)
+            null_order: NULL positioning (ORDER_NULL_FIRST or ORDER_NULL_LAST)
+
+        Returns:
+            A new Order instance
+        """
+        ...
+
     @property
-    def target(self) -> Expr: ...
+    def target(self) -> Expr:
+        """The expression to sort by."""
+        ...
+
     @property
-    def order(self) -> typing.Union[int, typing.Sequence[AdaptedValue]]: ...
+    def order(self) -> typing.Union[int, typing.Sequence[AdaptedValue]]:
+        """The sort direction (ORDER_ASC or ORDER_DESC)."""
+        ...
+
     @property
-    def null_order(self) -> typing.Optional[int]: ...
+    def null_order(self) -> typing.Optional[int]:
+        """NULL value positioning (ORDER_NULL_FIRST or ORDER_NULL_LAST)."""
+        ...
+
     def __repr__(self) -> str: ...
 
 class Insert:
-    def __new__(cls) -> Self: ...
-    def replace(self) -> Self: ...
-    def into(self, table: typing.Union[str, Table, TableName]) -> Self: ...
-    def columns(self, *args: typing.Union[Column, str]) -> Self: ...
+    """
+    Builds INSERT SQL statements with a fluent interface.
+
+    Provides a chainable API for constructing INSERT queries with support for:
+    - Single or multiple row insertion
+    - Conflict resolution (UPSERT)
+    - RETURNING clauses
+    - REPLACE functionality
+    - Default values
+
+    Example:
+        >>> Insert().into("users").columns("name", "email").values(
+        ...     "John", "john@example.com"
+        ... ).returning_all()
+        >>> Insert().into("users").values(name="Jane", email="jane@example.com")
+    """
+
+    def __new__(cls) -> Self:
+        """
+        Create a new INSERT statement builder.
+
+        Returns:
+            A new Insert instance
+        """
+        ...
+
+    def replace(self) -> Self:
+        """
+        Convert this INSERT to a REPLACE statement.
+
+        REPLACE will delete existing rows that conflict with the new row
+        before inserting.
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def into(self, table: typing.Union[str, Table, TableName]) -> Self:
+        """
+        Specify the target table for insertion.
+
+        Args:
+            table: The table name, Table object, or TableName to insert into
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def columns(self, *args: typing.Union[Column, str]) -> Self:
+        """
+        Specify the columns for insertion.
+
+        Args:
+            *args: Column names or Column objects
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
     @typing.overload
-    def values(self, **kwds: _ExprValue) -> Self: ...
+    def values(self, **kwds: _ExprValue) -> Self:
+        """
+        Specify values to insert using keyword arguments.
+
+        Args:
+            **kwds: Column names and their values
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
     @typing.overload
-    def values(self, *args: _ExprValue) -> Self: ...
-    def or_default_values(self, rows: int = ...) -> Self: ...
-    def on_conflict(self, action: OnConflict) -> Self: ...
-    def returning(self, *args: typing.Union[Column, str]) -> Self: ...
-    def returning_all(self) -> Self: ...
-    def build(
-        self, backend: _BackendMeta
-    ) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]: ...
-    def to_sql(self, backend: _BackendMeta) -> str: ...
+    def values(self, *args: _ExprValue) -> Self:
+        """
+        Specify values to insert using positional arguments.
+
+        Args:
+            *args: Values in the same order as columns
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def or_default_values(self, rows: int = ...) -> Self:
+        """
+        Use DEFAULT VALUES if no values were specified.
+
+        Args:
+            rows: Number of rows to insert with default values
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def on_conflict(self, action: OnConflict) -> Self:
+        """
+        Specify conflict resolution behavior (UPSERT).
+
+        Args:
+            action: The OnConflict specification
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def returning(self, *args: typing.Union[Column, str]) -> Self:
+        """
+        Specify columns to return from the inserted rows.
+
+        Args:
+            *args: Column names or Column objects to return
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def returning_all(self) -> Self:
+        """
+        Return all columns from the inserted rows.
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def build(self, backend: _Backends) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]:
+        """
+        Build the INSERT SQL statement with parameter values.
+
+        Args:
+            backend: The database backend that determines SQL dialect
+
+        Returns:
+            A tuple of (SQL string, parameter values)
+        """
+        ...
+
+    def to_sql(self, backend: _Backends) -> str:
+        """
+        Build the INSERT SQL statement as a plain string with values inlined.
+
+        Args:
+            backend: The database backend that determines SQL dialect
+
+        Returns:
+            A SQL string with values inlined
+        """
+        ...
+
     def __repr__(self) -> str: ...
 
 class Delete:
-    def __new__(cls) -> Self: ...
-    def from_table(self, table: typing.Union[str, Table, TableName]) -> Self: ...
-    def limit(self, n: int = ...) -> Self: ...
-    def returning(self, *args: typing.Union[Column, str]) -> Self: ...
-    def returning_all(self) -> Self: ...
-    def where(self, condition: _ExprValue) -> Self: ...
-    def order_by(self, order: Order) -> Self: ...
-    def build(
-        self, backend: _BackendMeta
-    ) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]: ...
-    def to_sql(self, backend: _BackendMeta) -> str: ...
+    """
+    Builds DELETE SQL statements with a fluent interface.
+
+    Provides a chainable API for constructing DELETE queries with support for:
+    - WHERE conditions for filtering
+    - LIMIT for restricting deletion count
+    - ORDER BY for determining deletion order
+    - RETURNING clauses for getting deleted data
+
+    Example:
+        >>> Delete().from_table("users").where(
+        ...     Expr.col("last_login") < "2020-01-01"
+        ... ).limit(100).returning("id", "email")
+    """
+
+    def __new__(cls) -> Self:
+        """
+        Create a new DELETE statement builder.
+
+        Returns:
+            A new Delete instance
+        """
+        ...
+
+    def from_table(self, table: typing.Union[str, Table, TableName]) -> Self:
+        """
+        Specify the table to delete from.
+
+        Args:
+            table: The table name, Table object, or TableName
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def limit(self, n: int = ...) -> Self:
+        """
+        Limit the number of rows to delete.
+
+        Args:
+            n: Maximum number of rows to delete
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def returning(self, *args: typing.Union[Column, str]) -> Self:
+        """
+        Specify columns to return from the deleted rows.
+
+        Args:
+            *args: Column names or Column objects to return
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def returning_all(self) -> Self:
+        """
+        Return all columns from the deleted rows.
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def where(self, condition: _ExprValue) -> Self:
+        """
+        Add a WHERE condition to filter rows to delete.
+
+        Args:
+            condition: The filter condition expression
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def order_by(self, order: Order) -> Self:
+        """
+        Specify the order in which to delete rows.
+
+        Typically used with LIMIT to delete specific rows.
+
+        Args:
+            order: The ordering specification
+
+        Returns:
+            Self for method chaining
+        """
+        ...
+
+    def build(self, backend: _Backends) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]:
+        """
+        Build the DELETE SQL statement with parameter values.
+
+        Args:
+            backend: The database backend that determines SQL dialect
+
+        Returns:
+            A tuple of (SQL string, parameter values)
+        """
+        ...
+
+    def to_sql(self, backend: _Backends) -> str:
+        """
+        Build the DELETE SQL statement as a plain string with values inlined.
+
+        Args:
+            backend: The database backend that determines SQL dialect
+
+        Returns:
+            A SQL string with values inlined
+        """
+        ...
+
     def __repr__(self) -> str: ...
