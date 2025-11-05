@@ -98,7 +98,7 @@ class TestTable:
         table = Table("test_table", columns)
         backend = "sqlite"
 
-        sql = table.build(backend)
+        sql = table.to_sql(backend)
 
         assert isinstance(sql, str)
         assert "CREATE TABLE" in sql.upper()
@@ -151,7 +151,7 @@ class TestDropTable:
         backend = "postgres"
 
         # Should not raise an exception
-        sql = drop_table.build(backend)
+        sql = drop_table.to_sql(backend)
 
         assert isinstance(sql, str)
         assert "DROP TABLE" in sql.upper()
@@ -241,7 +241,7 @@ class TestAlterTable:
         backend = "mysql"
 
         # Should not raise an exception
-        sql = alter_table.build(backend)
+        sql = alter_table.to_sql(backend)
 
         assert isinstance(sql, str)
         assert "ALTER TABLE" in sql.upper()

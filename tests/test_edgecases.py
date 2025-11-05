@@ -104,24 +104,24 @@ class TestExpressionEdgeCases:
         expr = _lib.all(
             _lib.Expr.col("a") < _lib.Expr.col("b"), _lib.Expr.col("b") < _lib.Expr.col("c")
         )
-        sql = expr.build("sqlite")
+        sql = expr.to_sql("sqlite")
         assert "AND" in sql or "and" in sql
 
     def test_division_by_zero_expression(self):
         """Division by zero in expression (shouldn't crash at build time)."""
         expr = _lib.Expr.col("value") / 0
         # Should build without error; database will handle runtime error
-        sql = expr.build("sqlite")
+        sql = expr.to_sql("sqlite")
         assert "/" in sql
 
     def test_null_comparisons(self):
         """NULL comparisons should use IS/IS NOT, not = or !=."""
         expr_is = _lib.Expr.col("field").is_(_lib.Expr.null())
-        sql_is = expr_is.build("postgresql")
+        sql_is = expr_is.to_sql("postgresql")
         assert "IS NULL" in sql_is.upper() or "ISNULL" in sql_is.upper()
 
         expr_is_not = _lib.Expr.col("field").is_not(_lib.Expr.null())
-        sql_is_not = expr_is_not.build("postgresql")
+        sql_is_not = expr_is_not.to_sql("postgresql")
         assert "IS NOT NULL" in sql_is_not.upper()
 
     def test_empty_in_clause(self):
@@ -136,27 +136,27 @@ class TestExpressionEdgeCases:
             _lib.any(_lib.Expr.col("c") == 3, _lib.Expr.col("d") == 4),
             _lib.Expr.col("e") > 5,
         )
-        sql = complex_expr.build("postgresql")
+        sql = complex_expr.to_sql("postgresql")
         # Should contain parentheses for grouping
         assert "(" in sql and ")" in sql
 
     def test_between_with_reversed_bounds(self):
         """BETWEEN with min > max (logical error but should build)."""
         expr = _lib.Expr.col("value").between(100, 1)
-        sql = expr.build("sqlite")
+        sql = expr.to_sql("sqlite")
         assert "BETWEEN" in sql.upper()
 
     def test_cast_to_invalid_type(self):
         """Casting to non-standard type name."""
         expr = _lib.Expr.col("value").cast_as("SUPER_WEIRD_TYPE")
-        sql = expr.build("postgresql")
+        sql = expr.to_sql("postgresql")
         assert "CAST" in sql.upper() or "::" in sql
 
     def test_expression_with_mixed_types(self):
         """Operations mixing incompatible types (int + string)."""
         # Should build but may cause DB error at runtime
         expr = _lib.Expr.col("age") + "not a number"
-        sql = expr.build("mysql")
+        sql = expr.to_sql("mysql")
         assert "+" in sql
 
 
@@ -191,7 +191,7 @@ class TestTableDefinitionEdgeCases:
             ],
         )
         # Should build SQL, validation happens at DB level
-        sql = table.build("postgresql")
+        sql = table.to_sql("postgresql")
         assert "FOREIGN KEY" in sql.upper()
 
     def test_circular_foreign_keys(self):
@@ -205,7 +205,7 @@ class TestTableDefinitionEdgeCases:
             ],
             foreign_keys=[_lib.ForeignKey(["b_id"], ["id"], "table_b")],
         )
-        sql_a = table_a.build("postgresql")
+        sql_a = table_a.to_sql("postgresql")
         assert "table_a" in sql_a.lower()
 
     def test_primary_key_on_nullable_column(self):
@@ -213,7 +213,7 @@ class TestTableDefinitionEdgeCases:
         col = _lib.Column("id", _lib.IntegerType(), primary_key=True, nullable=True)
         table = _lib.Table("test", columns=[col])
         # Should build; DB will handle the contradiction
-        sql = table.build("sqlite")
+        sql = table.to_sql("sqlite")
         assert "PRIMARY KEY" in sql.upper()
 
     def test_auto_increment_on_non_integer(self):
@@ -221,7 +221,7 @@ class TestTableDefinitionEdgeCases:
         col = _lib.Column("id", _lib.StringType(), auto_increment=True)
         table = _lib.Table("test", columns=[col])
         # Should build; DB will reject at execution
-        sql = table.build("mysql")
+        sql = table.to_sql("mysql")
         assert sql  # Just ensure it builds
 
     def test_index_on_nonexistent_column(self):
@@ -231,7 +231,7 @@ class TestTableDefinitionEdgeCases:
             columns=[_lib.Column("id", _lib.IntegerType())],
             indexes=[_lib.Index(["nonexistent_column"])],
         )
-        sql = table.build("postgresql")
+        sql = table.to_sql("postgresql")
         # Should build SQL, DB will validate
         assert "CREATE" in sql.upper() or "test" in sql.lower()
 
@@ -239,7 +239,7 @@ class TestTableDefinitionEdgeCases:
         """Table name exceeding typical DB limits."""
         long_name = "a" * 100
         table = _lib.Table(long_name, columns=[_lib.Column("id", _lib.IntegerType())])
-        sql = table.build("postgresql")
+        sql = table.to_sql("postgresql")
         assert long_name in sql
 
     def test_table_name_with_special_chars(self):
@@ -247,7 +247,7 @@ class TestTableDefinitionEdgeCases:
         special_names = ["user-data", "user space", "select"]
         for name in special_names:
             table = _lib.Table(name, columns=[_lib.Column("id", _lib.IntegerType())])
-            sql = table.build("postgresql")
+            sql = table.to_sql("postgresql")
             # Should quote the identifier
             assert name in sql or f'"{name}"' in sql or f"`{name}`" in sql
 
@@ -368,7 +368,7 @@ class TestFunctionCallEdgeCases:
         """Functions that take no arguments."""
         func = _lib.FunctionCall.random()
         expr = func.to_expr()
-        sql = expr.build("postgresql")
+        sql = expr.to_sql("postgresql")
         assert sql  # Should build something
 
     def test_function_with_many_args(self):
@@ -383,7 +383,7 @@ class TestFunctionCallEdgeCases:
             ]
         )
         expr = func.to_expr()
-        sql = expr.build("sqlite")
+        sql = expr.to_sql("sqlite")
         assert "COALESCE" in sql.upper() or "IFNULL" in sql.upper()
 
     def test_nested_function_calls(self):
@@ -391,7 +391,7 @@ class TestFunctionCallEdgeCases:
         inner = _lib.FunctionCall.lower(_lib.Expr.col("name"))
         outer = _lib.FunctionCall.upper(inner.to_expr())
         expr = outer.to_expr()
-        sql = expr.build("postgresql")
+        sql = expr.to_sql("postgresql")
         assert "UPPER" in sql.upper() and "LOWER" in sql.upper()
 
 
@@ -403,7 +403,7 @@ class TestAlterTableEdgeCases:
         alter = _lib.AlterTable(
             "users", options=[_lib.AlterTableRenameColumnOption("name", "name")]
         )
-        sql = alter.build("postgresql")
+        sql = alter.to_sql("postgresql")
         assert "ALTER" in sql.upper()
 
     def test_alter_multiple_conflicting_ops(self):
@@ -417,7 +417,7 @@ class TestAlterTableEdgeCases:
                 _lib.AlterTableDropColumnOption("temp"),
             ],
         )
-        sql = alter.build("postgresql")
+        sql = alter.to_sql("postgresql")
         # Should build both operations; DB handles logic
         assert "ADD" in sql.upper() and "DROP" in sql.upper()
 
@@ -498,7 +498,7 @@ class TestSQLInjectionPrevention:
         keywords = ["select", "from", "where", "drop", "table"]
         for kw in keywords:
             table = _lib.Table(kw, columns=[_lib.Column("id", _lib.IntegerType())])
-            sql = table.build("postgresql")
+            sql = table.to_sql("postgresql")
             # Should quote the identifier
             assert sql
 
@@ -527,14 +527,14 @@ class TestLogicalOperatorEdgeCases:
     def test_all_with_single_condition(self):
         """_lib.all() with just one condition."""
         expr = _lib.all(_lib.Expr.col("a") == 1)
-        sql = expr.build("sqlite")
+        sql = expr.to_sql("sqlite")
         # Should work without unnecessary AND
         assert sql
 
     def test_any_with_single_condition(self):
         """_lib.any() with just one condition."""
         expr = _lib.any(_lib.Expr.col("a") == 1)
-        sql = expr.build("sqlite")
+        sql = expr.to_sql("sqlite")
         # Should work without unnecessary OR
         assert sql
 
@@ -542,7 +542,7 @@ class TestLogicalOperatorEdgeCases:
         """NOT of a complex AND/OR expression."""
         inner = _lib.all(_lib.Expr.col("a") == 1, _lib.Expr.col("b") == 2)
         expr = _lib.not_(inner)
-        sql = expr.build("postgresql")
+        sql = expr.to_sql("postgresql")
         assert "NOT" in sql.upper()
 
     def test_empty_all(self):

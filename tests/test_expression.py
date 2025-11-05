@@ -44,7 +44,7 @@ exprdata = [
 
 @pytest.mark.parametrize("val,expected,backend", exprdata)
 def test_expr_build(val: _lib.Expr, expected: str, backend: str):
-    expr = val.build(backend)
+    expr = val.to_sql(backend)
     assert expr == expected
 
 
