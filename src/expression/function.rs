@@ -224,7 +224,7 @@ impl PyFunctionCall {
         crate::expression::PyExpr::from(sea_query::SimpleExpr::FunctionCall(lock.clone()))
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
 
         let mut sql = String::new();

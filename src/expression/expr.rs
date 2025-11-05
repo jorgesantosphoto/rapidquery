@@ -646,7 +646,7 @@ impl PyExpr {
         .into())
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let mut sql = String::new();
 
         prepare_sql!(

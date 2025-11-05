@@ -1,3 +1,9 @@
+#[pyo3::pyclass(module = "rapidquery._lib", name = "SchemaStatement", frozen, immutable_type, subclass)]
+pub struct PySchemaStatement;
+
+#[pyo3::pyclass(module = "rapidquery._lib", name = "QueryStatement", frozen, immutable_type, subclass)]
+pub struct PyQueryStatement;
+
 #[inline]
 #[optimize(speed)]
 pub(crate) fn into_query_builder(

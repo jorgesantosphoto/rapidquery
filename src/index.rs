@@ -1,3 +1,4 @@
+use crate::backend::PySchemaStatement;
 use sea_query::IntoIden;
 
 #[derive(Debug, Clone)]
@@ -14,9 +15,7 @@ impl From<String> for IndexTypeAlias {
         } else if lower == "btree" {
             Self(sea_query::IndexType::BTree)
         } else {
-            Self(sea_query::IndexType::Custom(
-                sea_query::Alias::new(value).into_iden(),
-            ))
+            Self(sea_query::IndexType::Custom(sea_query::Alias::new(value).into_iden()))
         }
     }
 }
@@ -114,10 +113,7 @@ impl IndexInner {
 
         for col in &self.columns {
             #[cfg(not(debug_assertions))]
-            let col = unsafe {
-                col.bind(py)
-                    .cast_unchecked::<crate::common::PyIndexColumn>()
-            };
+            let col = unsafe { col.bind(py).cast_unchecked::<crate::common::PyIndexColumn>() };
 
             #[cfg(debug_assertions)]
             let col = col.bind(py).cast::<crate::common::PyIndexColumn>().unwrap();
@@ -163,7 +159,7 @@ impl IndexInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "Index", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "Index", frozen, extends=PySchemaStatement)]
 pub struct PyIndex {
     pub inner: parking_lot::Mutex<IndexInner>,
 }
@@ -183,11 +179,7 @@ fn convert_pyobject_into_index_column(
             return Ok(pyo3::Py::new(py, crate::common::PyIndexColumn::from(x))?.into_any());
         }
 
-        Err(typeerror!(
-            "expected IndexColumn or str, got {:?}",
-            py,
-            obj.as_ptr()
-        ))
+        Err(typeerror!("expected IndexColumn or str, got {:?}", py, obj.as_ptr()))
     }
 }
 
@@ -220,7 +212,7 @@ impl PyIndex {
         include: Vec<String>,
         index_type: Option<String>,
         r#where: Option<&pyo3::Bound<'_, pyo3::PyAny>>,
-    ) -> pyo3::PyResult<Self> {
+    ) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         let mut cols = Vec::with_capacity(columns.capacity());
         for col in columns {
             cols.push(convert_pyobject_into_index_column(py, col)?);
@@ -239,11 +231,7 @@ impl PyIndex {
             match r#where {
                 Some(x) => unsafe {
                     if pyo3::ffi::Py_TYPE(x.as_ptr()) != crate::typeref::EXPR_TYPE {
-                        return Err(typeerror!(
-                            "expected Expr as where, got {:?}",
-                            x.py(),
-                            x.as_ptr()
-                        ));
+                        return Err(typeerror!("expected Expr as where, got {:?}", x.py(), x.as_ptr()));
                     }
 
                     Some(x.clone().unbind())
@@ -271,9 +259,11 @@ impl PyIndex {
             inner.regenerate_name(py);
         }
 
-        Ok(Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(inner),
-        })
+        };
+
+        Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
     }
 
     #[getter]
@@ -414,23 +404,25 @@ impl PyIndex {
         lock.include = val;
     }
 
-    fn __copy__(&self, py: pyo3::Python) -> Self {
+    fn __copy__(&self, py: pyo3::Python) -> pyo3::Py<Self> {
         let lock = self.inner.lock();
 
-        Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(lock.clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn copy(&self, py: pyo3::Python) -> Self {
+    fn copy(&self, py: pyo3::Python) -> pyo3::Py<Self> {
         let lock = self.inner.lock();
 
-        Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(lock.clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_statement(backend.py());
         drop(lock);
@@ -539,11 +531,7 @@ pub struct PyDropIndex {
 impl PyDropIndex {
     #[new]
     #[pyo3(signature=(name, table=None, if_exists=false))]
-    fn new(
-        name: String,
-        table: Option<&pyo3::Bound<'_, pyo3::PyAny>>,
-        if_exists: bool,
-    ) -> pyo3::PyResult<Self> {
+    fn new(name: String, table: Option<&pyo3::Bound<'_, pyo3::PyAny>>, if_exists: bool) -> pyo3::PyResult<Self> {
         let table: Option<pyo3::Py<pyo3::PyAny>> = {
             match table {
                 Some(table) => Some(crate::common::PyTableName::from_pyobject(table)?),
@@ -551,11 +539,7 @@ impl PyDropIndex {
             }
         };
 
-        let inner = DropIndexInner {
-            name,
-            table,
-            if_exists,
-        };
+        let inner = DropIndexInner { name, table, if_exists };
 
         Ok(Self {
             inner: parking_lot::Mutex::new(inner),

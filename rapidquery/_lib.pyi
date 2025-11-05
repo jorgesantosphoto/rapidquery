@@ -15,6 +15,49 @@ class _AsteriskType:
 
 ASTERISK: typing.Final[_AsteriskType]
 
+
+class SchemaStatement:
+    def to_sql(self, backend: _Backends) -> str:
+        """
+        Build a SQL string representation.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the expression
+        """
+        ...
+
+
+class QueryStatement:
+    def build(self, backend: _Backends) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]:
+        """
+        Build the SQL statement with parameter values.
+
+        Args:
+            backend: The database backend that determines SQL dialect
+
+        Returns:
+            A tuple of (SQL string, parameter values)
+        """
+        ...
+    
+    def to_sql(self, backend: _Backends) -> str:
+        """
+        Build a SQL string representation.
+
+        **This method is unsafe and can cause SQL injection.** use `.build()` method instead.
+
+        Args:
+            backend: The database backend that determines SQL dialect and formatting
+
+        Returns:
+            A SQL string representation of the expression
+        """
+        ...
+
+
 T = typing.TypeVar("T")
 
 class ColumnTypeMeta(typing.Generic[T]):
@@ -605,9 +648,11 @@ class AdaptedValue(typing.Generic[T]):
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
+    # `AdaptedValue` is not a child of SchemaStatement, but we used
+    # `to_sql` name for this method to make compatible with others
+    def to_sql(self) -> str:
         """
-        Converts the adapted value to its SQL string representation.
+        Converts the adapted value to SQL.
         """
         ...
 
@@ -723,17 +768,17 @@ class Expr:
     Example::
         # Basic comparison
         e = Expr(1) > Expr(2)
-        e.build(MySQLBackend())
+        e.build("mysql")
         # Result: 1 > 2
 
         # IN clause with tuple
         e = Expr.col("id").in_(Expr((1, 2, 3)))
-        e.build(MySQLBackend())
+        e.build("mysql")
         # Result: "id" IN (1, 2, 3)
 
         # Complex expression with functions
         e = FunctionCall.upper(Expr.col("name")).to_expr() == "JOHN"
-        e.build(PostgreSQLBackend())
+        e.build("postgres")
         # Result: UPPER("name") = 'JOHN'
     """
 
@@ -1252,12 +1297,11 @@ class Expr:
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
+    # `Expr` is not a child of SchemaStatement, but we used
+    # `to_sql` name for this method to make compatible with others
+    def to_sql(self) -> str:
         """
-        Convert the expression to its SQL string representation.
-
-        **do NOT execute the result of this method** because this function does not
-        use parametized SQL, and easy can cause SQL injection. **use `build` method instead**.
+        Converts the adapted value to SQL.
         """
         ...
 
@@ -1544,15 +1588,11 @@ class FunctionCall:
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
+    # `FunctionCall` is not a child of SchemaStatement, but we used
+    # `to_sql` name for this method to make compatible with others
+    def to_sql(self) -> str:
         """
-        Convert the function call to its SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect
-
-        Returns:
-            A SQL string representation of the function call
+        Converts the adapted value to SQL.
         """
         ...
 
@@ -2030,9 +2070,11 @@ class IndexColumn:
         """
         ...
 
+
+
 _IndexType = typing.Literal["BTREE", "FULL TEXT", "HASH"]
 
-class Index:
+class Index(SchemaStatement):
     """
     Represents a database index specification.
 
@@ -2129,18 +2171,6 @@ class Index:
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
-        """
-        Build a CREATE INDEX SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect and formatting
-
-        Returns:
-            A SQL string representation of the expression
-        """
-        ...
-
     def __repr__(self) -> str:
         """
         Return a string representation of the Index.
@@ -2213,7 +2243,7 @@ class DropIndex:
         """
         ...
 
-class Table:
+class Table(SchemaStatement):
     """
     Represents a complete database table definition.
 
@@ -2332,18 +2362,6 @@ class Table:
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
-        """
-        Build a CREATE TABLE SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect and formatting
-
-        Returns:
-            A SQL string representation of the table creation statement
-        """
-        ...
-
     def __repr__(self) -> str:
         """
         Return a developer-friendly string representation.
@@ -2353,7 +2371,7 @@ class Table:
         """
         ...
 
-class DropTable:
+class DropTable(SchemaStatement):
     """
     Represents a DROP TABLE SQL statement.
 
@@ -2414,18 +2432,6 @@ class DropTable:
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
-        """
-        Build a DROP TABLE SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect and formatting
-
-        Returns:
-            A SQL string representation of the drop table statement
-        """
-        ...
-
     def __repr__(self) -> str:
         """
         Return a developer-friendly string representation.
@@ -2435,7 +2441,7 @@ class DropTable:
         """
         ...
 
-class RenameTable:
+class RenameTable(SchemaStatement):
     """
     Represents a RENAME TABLE SQL statement.
 
@@ -2485,18 +2491,6 @@ class RenameTable:
         """
         ...
 
-    def build(self, backend: _Backends) -> str:
-        """
-        Build a RENAME TABLE SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect and formatting
-
-        Returns:
-            A SQL string representation of the rename table statement
-        """
-        ...
-
     def __repr__(self) -> str:
         """
         Return a developer-friendly string representation.
@@ -2506,7 +2500,7 @@ class RenameTable:
         """
         ...
 
-class TruncateTable:
+class TruncateTable(SchemaStatement):
     """
     Represents a TRUNCATE TABLE SQL statement.
 
@@ -2548,18 +2542,6 @@ class TruncateTable:
 
         Returns:
             A new TruncateTable instance with the same values
-        """
-        ...
-
-    def build(self, backend: _Backends) -> str:
-        """
-        Build a TRUNCATE TABLE SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect and formatting
-
-        Returns:
-            A SQL string representation of the truncate table statement
         """
         ...
 
@@ -2698,7 +2680,7 @@ class AlterTableRenameColumnOption(AlterTableOptionMeta):
     def to_name(self) -> str: ...
     def __repr__(self) -> str: ...
 
-class AlterTable:
+class AlterTable(SchemaStatement):
     """
     Represents an ALTER TABLE SQL statement.
 
@@ -2761,18 +2743,6 @@ class AlterTable:
 
         Returns:
             A new AlterTable instance with the same values
-        """
-        ...
-
-    def build(self, backend: _Backends) -> str:
-        """
-        Build an ALTER TABLE SQL string representation.
-
-        Args:
-            backend: The database backend that determines SQL dialect and formatting
-
-        Returns:
-            A SQL string representation of the alter table statement
         """
         ...
 
@@ -2928,7 +2898,7 @@ class Order:
 
     def __repr__(self) -> str: ...
 
-class Insert:
+class Insert(QueryStatement):
     """
     Builds INSERT SQL statements with a fluent interface.
 
@@ -3062,30 +3032,9 @@ class Insert:
         """
         ...
 
-    def build(self, backend: _Backends) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]:
-        """
-        Build the INSERT SQL statement with parameter values.
-
-        Args:
-            backend: The database backend that determines SQL dialect
-
-        Returns:
-            A tuple of (SQL string, parameter values)
-        """
-        ...
-
-    def to_sql(self, backend: _Backends) -> str:
-        """
-        Build the INSERT SQL statement as a plain string with values inlined.
-
-        **do NOT execute the result of this method** because this function does not
-        use parametized SQL, and easy can cause SQL injection. **use `build` method instead**.
-        """
-        ...
-
     def __repr__(self) -> str: ...
 
-class Delete:
+class Delete(QueryStatement):
     """
     Builds DELETE SQL statements with a fluent interface.
 
@@ -3181,30 +3130,9 @@ class Delete:
         """
         ...
 
-    def build(self, backend: _Backends) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]:
-        """
-        Build the DELETE SQL statement with parameter values.
-
-        Args:
-            backend: The database backend that determines SQL dialect
-
-        Returns:
-            A tuple of (SQL string, parameter values)
-        """
-        ...
-
-    def to_sql(self, backend: _Backends) -> str:
-        """
-        Build the DELETE SQL statement as a plain string with values inlined.
-
-        **do NOT execute the result of this method** because this function does not
-        use parametized SQL, and easy can cause SQL injection. **use `build` method instead**.
-        """
-        ...
-
     def __repr__(self) -> str: ...
 
-class Update:
+class Update(QueryStatement):
     """
     Builds UPDATE SQL statements with a fluent interface.
 
@@ -3248,8 +3176,11 @@ class Update:
 
     def from_table(self, table: typing.Union[str, Table, TableName]) -> Self:
         """
-        Specify the table to update (alias for table()).
+        Update using data from another table (`UPDATE .. FROM ..`).
 
+        **Notes** \\
+        MySQL doesn't support the UPDATE FROM syntax. And the current implementation attempt to tranform it to the UPDATE JOIN syntax, which only works for one join target.
+        
         Args:
             table: The table name, Table object, or TableName
 
@@ -3326,27 +3257,6 @@ class Update:
 
         Returns:
             Self for method chaining
-        """
-        ...
-
-    def build(self, backend: _Backends) -> typing.Tuple[str, typing.Tuple[AdaptedValue, ...]]:
-        """
-        Build the UPDATE SQL statement with parameter values.
-
-        Args:
-            backend: The database backend that determines SQL dialect
-
-        Returns:
-            A tuple of (SQL string, parameter values)
-        """
-        ...
-
-    def to_sql(self, backend: _Backends) -> str:
-        """
-        Build the UPDATE SQL statement as a plain string with values inlined.
-
-        **do NOT execute the result of this method** because this function does not
-        use parametized SQL, and easy can cause SQL injection. **use `build` method instead**.
         """
         ...
 

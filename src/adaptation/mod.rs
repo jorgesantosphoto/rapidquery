@@ -638,7 +638,7 @@ impl PyAdaptedValue {
         }
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let mut lock = self.inner.lock();
         let expr = lock.create_simple_expr(backend.py());
 

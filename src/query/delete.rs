@@ -1,5 +1,6 @@
 use pyo3::types::{PyAnyMethods, PyTupleMethods};
 use sea_query::IntoIden;
+use crate::backend::PyQueryStatement;
 
 #[derive(Default)]
 pub struct DeleteInner {
@@ -72,7 +73,7 @@ impl DeleteInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "Delete", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "Delete", frozen, extends=PyQueryStatement)]
 pub struct PyDelete {
     pub inner: parking_lot::Mutex<DeleteInner>,
 }
@@ -80,10 +81,11 @@ pub struct PyDelete {
 #[pyo3::pymethods]
 impl PyDelete {
     #[new]
-    fn new() -> Self {
-        Self {
+    fn new() -> (Self, PyQueryStatement) {
+        let slf = Self {
             inner: parking_lot::Mutex::new(Default::default()),
-        }
+        };
+        (slf, PyQueryStatement)
     }
 
     #[allow(clippy::wrong_self_convention)]

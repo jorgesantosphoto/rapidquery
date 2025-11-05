@@ -1,5 +1,6 @@
 use pyo3::types::{PyAnyMethods, PyDictMethods, PyTupleMethods};
 use sea_query::IntoIden;
+use crate::backend::PyQueryStatement;
 
 #[derive(Debug, Default)]
 pub enum InsertValueSource {
@@ -101,7 +102,7 @@ impl InsertInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "Insert", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "Insert", frozen, extends=PyQueryStatement)]
 pub struct PyInsert {
     inner: parking_lot::Mutex<InsertInner>,
 }
@@ -203,10 +204,11 @@ impl PyInsert {
 #[pyo3::pymethods]
 impl PyInsert {
     #[new]
-    fn new() -> Self {
-        Self {
+    fn new() -> (Self, PyQueryStatement) {
+        let slf = Self {
             inner: parking_lot::Mutex::new(Default::default()),
-        }
+        };
+        (slf, PyQueryStatement)
     }
 
     fn replace(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {

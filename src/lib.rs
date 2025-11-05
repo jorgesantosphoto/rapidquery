@@ -33,6 +33,9 @@ mod _lib {
     use pyo3::types::PyModuleMethods;
 
     #[pymodule_export]
+    use super::backend::{PyQueryStatement, PySchemaStatement};
+
+    #[pymodule_export]
     use super::column::types::PyColumnTypeMeta;
 
     #[pymodule_export]

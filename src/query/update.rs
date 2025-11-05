@@ -1,5 +1,6 @@
 use pyo3::types::{PyAnyMethods, PyDictMethods, PyTupleMethods};
 use sea_query::IntoIden;
+use crate::backend::PyQueryStatement;
 
 #[derive(Default)]
 pub struct UpdateInner {
@@ -89,7 +90,7 @@ impl UpdateInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "Update", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "Update", frozen, extends=PyQueryStatement)]
 pub struct PyUpdate {
     pub inner: parking_lot::Mutex<UpdateInner>,
 }
@@ -97,10 +98,11 @@ pub struct PyUpdate {
 #[pyo3::pymethods]
 impl PyUpdate {
     #[new]
-    fn new() -> Self {
-        Self {
+    fn new() -> (Self, PyQueryStatement) {
+        let slf = Self {
             inner: parking_lot::Mutex::new(Default::default()),
-        }
+        };
+        (slf, PyQueryStatement)
     }
 
     fn table<'a>(

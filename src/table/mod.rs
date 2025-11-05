@@ -9,6 +9,7 @@ pub use ops::{
 
 use pyo3::types::PyAnyMethods;
 use std::collections::HashMap;
+use crate::backend::PySchemaStatement;
 
 type ColumnsMap = HashMap<String, pyo3::Py<pyo3::PyAny>>;
 
@@ -129,7 +130,7 @@ impl TableInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "Table", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "Table", frozen, extends=PySchemaStatement)]
 pub struct PyTable {
     pub inner: parking_lot::Mutex<TableInner>,
 }
@@ -166,7 +167,7 @@ impl PyTable {
         collate: Option<String>,
         character_set: Option<String>,
         extra: Option<String>,
-    ) -> pyo3::PyResult<Self> {
+    ) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         let py = name.py();
 
         let name = crate::common::PyTableName::from_pyobject(name)?;
@@ -248,9 +249,11 @@ impl PyTable {
             extra,
         };
 
-        Ok(Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(inner),
-        })
+        };
+
+        Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
     }
 
     #[getter]
@@ -487,7 +490,7 @@ impl PyTable {
             .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_table_create_statement(backend.py());
         let ix = lock.as_index_create_statements(backend.py());

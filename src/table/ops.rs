@@ -1,3 +1,4 @@
+use crate::backend::PySchemaStatement;
 use pyo3::types::PyAnyMethods;
 use pyo3::PyTypeInfo;
 use sea_query::IntoIden;
@@ -26,10 +27,7 @@ impl DropTableInner {
     fn as_statement(&self, py: pyo3::Python<'_>) -> sea_query::TableDropStatement {
         let mut stmt = sea_query::TableDropStatement::new();
 
-        let x = unsafe {
-            self.name
-                .cast_bound_unchecked::<crate::common::PyTableName>(py)
-        };
+        let x = unsafe { self.name.cast_bound_unchecked::<crate::common::PyTableName>(py) };
         stmt.table(x.get().clone());
 
         if self.options & (DropTableOptions::IfExists as u8) > 0 {
@@ -46,7 +44,7 @@ impl DropTableInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "DropTable", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "DropTable", frozen, extends=PySchemaStatement)]
 pub struct PyDropTable {
     inner: parking_lot::Mutex<DropTableInner>,
 }
@@ -65,7 +63,7 @@ impl PyDropTable {
         if_exists: bool,
         restrict: bool,
         cascade: bool,
-    ) -> pyo3::PyResult<Self> {
+    ) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         let name = crate::common::PyTableName::from_pyobject(name)?;
 
         let inner = DropTableInner {
@@ -75,9 +73,10 @@ impl PyDropTable {
                 | ((cascade as u8) * (DropTableOptions::Cascade as u8)),
         };
 
-        Ok(Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(inner),
-        })
+        };
+        Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
     }
 
     #[getter]
@@ -138,19 +137,21 @@ impl PyDropTable {
         }
     }
 
-    fn __copy__(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn __copy__(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn copy(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn copy(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_statement(backend.py());
         drop(lock);
@@ -201,21 +202,15 @@ impl RenameTableInner {
     fn as_statement(&self, py: pyo3::Python<'_>) -> sea_query::TableRenameStatement {
         let mut stmt = sea_query::TableRenameStatement::new();
 
-        let from = unsafe {
-            self.from_name
-                .cast_bound_unchecked::<crate::common::PyTableName>(py)
-        };
-        let to = unsafe {
-            self.to_name
-                .cast_bound_unchecked::<crate::common::PyTableName>(py)
-        };
+        let from = unsafe { self.from_name.cast_bound_unchecked::<crate::common::PyTableName>(py) };
+        let to = unsafe { self.to_name.cast_bound_unchecked::<crate::common::PyTableName>(py) };
 
         stmt.table(from.get().clone(), to.get().clone());
         stmt
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "RenameTable", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "RenameTable", frozen, extends=PySchemaStatement)]
 pub struct PyRenameTable {
     inner: parking_lot::Mutex<RenameTableInner>,
 }
@@ -227,15 +222,16 @@ impl PyRenameTable {
     fn new(
         from_name: &pyo3::Bound<'_, pyo3::PyAny>,
         to_name: &pyo3::Bound<'_, pyo3::PyAny>,
-    ) -> pyo3::PyResult<Self> {
+    ) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         let from_name = crate::common::PyTableName::from_pyobject(from_name)?;
         let to_name = crate::common::PyTableName::from_pyobject(to_name)?;
 
         let inner = RenameTableInner { from_name, to_name };
 
-        Ok(Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(inner),
-        })
+        };
+        Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
     }
 
     #[getter]
@@ -265,19 +261,21 @@ impl PyRenameTable {
         Ok(())
     }
 
-    fn __copy__(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn __copy__(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn copy(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn copy(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_statement(backend.py());
         drop(lock);
@@ -308,17 +306,14 @@ impl TruncateTableInner {
     fn as_statement(&self, py: pyo3::Python<'_>) -> sea_query::TableTruncateStatement {
         let mut stmt = sea_query::TableTruncateStatement::new();
 
-        let name = unsafe {
-            self.name
-                .cast_bound_unchecked::<crate::common::PyTableName>(py)
-        };
+        let name = unsafe { self.name.cast_bound_unchecked::<crate::common::PyTableName>(py) };
 
         stmt.table(name.get().clone());
         stmt
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "TruncateTable", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "TruncateTable", frozen, extends=PySchemaStatement)]
 pub struct PyTruncateTable {
     inner: parking_lot::Mutex<TruncateTableInner>,
 }
@@ -327,14 +322,15 @@ pub struct PyTruncateTable {
 impl PyTruncateTable {
     #[new]
     #[pyo3(signature=(name))]
-    fn new(name: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+    fn new(name: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         let name = crate::common::PyTableName::from_pyobject(name)?;
 
         let inner = TruncateTableInner { name };
 
-        Ok(Self {
+        let slf = Self {
             inner: parking_lot::Mutex::new(inner),
-        })
+        };
+        Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
     }
 
     #[getter]
@@ -350,19 +346,21 @@ impl PyTruncateTable {
         Ok(())
     }
 
-    fn __copy__(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn __copy__(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn copy(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn copy(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_statement(backend.py());
         drop(lock);
@@ -378,23 +376,16 @@ impl PyTruncateTable {
     }
 }
 
-#[pyo3::pyclass(
-    module = "rapidquery._lib",
-    name = "AlterTableOptionMeta",
-    frozen,
-    subclass
-)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "AlterTableOptionMeta", frozen, subclass)]
 pub struct PyAlterTableOptionMeta;
 
 #[pyo3::pymethods]
 impl PyAlterTableOptionMeta {
     #[new]
-    fn new() -> pyo3::PyResult<Self> {
-        Err(
-            pyo3::PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
-                "don't use directly AlterTableOptionMeta class; use AlterTable*Option classes",
-            ),
-        )
+    fn new() -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
+        Err(pyo3::PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
+            "don't use directly AlterTableOptionMeta class; use AlterTable*Option classes",
+        ))
     }
 }
 
@@ -419,14 +410,8 @@ impl PyAlterTableAddColumnOption {
         if_not_exists: bool,
     ) -> pyo3::PyResult<(Self, PyAlterTableOptionMeta)> {
         unsafe {
-            if std::hint::unlikely(
-                pyo3::ffi::Py_TYPE(column.as_ptr()) != crate::typeref::COLUMN_TYPE,
-            ) {
-                return Err(typeerror!(
-                    "expected Column, got {:?}",
-                    column.py(),
-                    column.as_ptr()
-                ));
+            if std::hint::unlikely(pyo3::ffi::Py_TYPE(column.as_ptr()) != crate::typeref::COLUMN_TYPE) {
+                return Err(typeerror!("expected Column, got {:?}", column.py(), column.as_ptr()));
             }
         }
 
@@ -479,18 +464,10 @@ pub struct PyAlterTableModifyColumnOption {
 impl PyAlterTableModifyColumnOption {
     #[new]
     #[pyo3(signature=(column))]
-    fn new(
-        column: &pyo3::Bound<'_, pyo3::PyAny>,
-    ) -> pyo3::PyResult<(Self, PyAlterTableOptionMeta)> {
+    fn new(column: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<(Self, PyAlterTableOptionMeta)> {
         unsafe {
-            if std::hint::unlikely(
-                pyo3::ffi::Py_TYPE(column.as_ptr()) != crate::typeref::COLUMN_TYPE,
-            ) {
-                return Err(typeerror!(
-                    "expected Column, got {:?}",
-                    column.py(),
-                    column.as_ptr()
-                ));
+            if std::hint::unlikely(pyo3::ffi::Py_TYPE(column.as_ptr()) != crate::typeref::COLUMN_TYPE) {
+                return Err(typeerror!("expected Column, got {:?}", column.py(), column.as_ptr()));
             }
         }
 
@@ -593,13 +570,9 @@ pub struct PyAlterTableAddForeignKeyOption {
 impl PyAlterTableAddForeignKeyOption {
     #[new]
     #[pyo3(signature=(foreign_key))]
-    fn new(
-        foreign_key: &pyo3::Bound<'_, pyo3::PyAny>,
-    ) -> pyo3::PyResult<(Self, PyAlterTableOptionMeta)> {
+    fn new(foreign_key: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<(Self, PyAlterTableOptionMeta)> {
         unsafe {
-            if std::hint::unlikely(
-                !foreign_key.is_exact_instance_of::<crate::foreign_key::PyForeignKey>(),
-            ) {
+            if std::hint::unlikely(!foreign_key.is_exact_instance_of::<crate::foreign_key::PyForeignKey>()) {
                 return Err(typeerror!(
                     "expected ForeignKeySpec, got {:?}",
                     foreign_key.py(),
@@ -671,10 +644,7 @@ impl AlterTableInner {
     fn as_statement(&self, py: pyo3::Python) -> sea_query::TableAlterStatement {
         let mut stmt = sea_query::TableAlterStatement::new();
 
-        let x = unsafe {
-            self.name
-                .cast_bound_unchecked::<crate::common::PyTableName>(py)
-        };
+        let x = unsafe { self.name.cast_bound_unchecked::<crate::common::PyTableName>(py) };
         stmt.table(x.get().clone());
 
         for op in self.options.iter() {
@@ -737,7 +707,7 @@ impl AlterTableInner {
     }
 }
 
-#[pyo3::pyclass(module = "rapidquery._lib", name = "AlterTable", frozen)]
+#[pyo3::pyclass(module = "rapidquery._lib", name = "AlterTable", frozen, extends=PySchemaStatement)]
 pub struct PyAlterTable {
     inner: parking_lot::Mutex<AlterTableInner>,
 }
@@ -748,7 +718,7 @@ impl PyAlterTable {
     fn new(
         name: &pyo3::Bound<'_, pyo3::PyAny>,
         options: Vec<pyo3::Py<pyo3::PyAny>>,
-    ) -> pyo3::PyResult<Self> {
+    ) -> pyo3::PyResult<pyo3::PyClassInitializer<Self>> {
         let py = name.py();
         let name = crate::common::PyTableName::from_pyobject(name)?;
 
@@ -761,10 +731,11 @@ impl PyAlterTable {
                 ));
             }
         }
-
-        Ok(Self {
+        
+        let slf = Self {
             inner: parking_lot::Mutex::new(AlterTableInner { name, options }),
-        })
+        };
+        Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
     }
 
     #[getter]
@@ -782,12 +753,7 @@ impl PyAlterTable {
 
     #[getter]
     fn options(&self, py: pyo3::Python) -> Vec<pyo3::Py<pyo3::PyAny>> {
-        self.inner
-            .lock()
-            .options
-            .iter()
-            .map(|x| x.clone_ref(py))
-            .collect()
+        self.inner.lock().options.iter().map(|x| x.clone_ref(py)).collect()
     }
 
     #[setter]
@@ -821,19 +787,21 @@ impl PyAlterTable {
         Ok(())
     }
 
-    fn __copy__(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn __copy__(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn copy(&self, py: pyo3::Python) -> Self {
-        Self {
+    fn copy(&self, py: pyo3::Python) -> pyo3::Py<Self> {
+        let slf = Self {
             inner: parking_lot::Mutex::new(self.inner.lock().clone_ref(py)),
-        }
+        };
+        pyo3::Py::new(py, pyo3::PyClassInitializer::from((slf, PySchemaStatement))).unwrap()
     }
 
-    fn build(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
+    fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_statement(backend.py());
         drop(lock);
