@@ -107,13 +107,19 @@ pub enum SelectDistinct {
     ),
 }
 
+pub struct SelectLock {
+    pub r#type: sea_query::LockType,
+    pub behavior: Option<sea_query::LockBehavior>,
+    pub tables: Vec<pyo3::Py<pyo3::PyAny>>,
+}
+
 #[derive(Default)]
 pub struct SelectInner {
     pub distinct: SelectDistinct,
 
     // TODO: support subquery
     // Always is `Vec<TableName>`
-    pub table: Vec<pyo3::Py<pyo3::PyAny>>,
+    pub tables: Vec<pyo3::Py<pyo3::PyAny>>,
 
     // Always is `Option<SelectExpr>`
     pub cols: Vec<pyo3::Py<pyo3::PyAny>>,
@@ -121,12 +127,13 @@ pub struct SelectInner {
     // Always is `Option<PyExpr>`
     pub r#where: Option<pyo3::Py<pyo3::PyAny>>,
 
+    pub lock: Option<SelectLock>,
+    pub groups: Vec<pyo3::Py<pyo3::PyAny>>,
+
     // TODO
     // pub join: Vec<pyo3::Py<pyo3::PyAny>>,
-    // pub groups: Vec<pyo3::Py<pyo3::PyAny>>,
     // pub having: Vec<pyo3::Py<pyo3::PyAny>>,
     // pub unions: Vec<pyo3::Py<pyo3::PyAny>>,
-    // pub lock: Option<pyo3::Py<pyo3::PyAny>>,
     // pub window: Option<pyo3::Py<pyo3::PyAny>>,
     // pub with: Option<pyo3::Py<pyo3::PyAny>>,
     pub orders: Vec<pyo3::Py<pyo3::PyAny>>,
@@ -159,7 +166,7 @@ impl SelectInner {
             }
         }
 
-        for table in self.table.iter() {
+        for table in self.tables.iter() {
             let x = unsafe { table.cast_bound_unchecked::<crate::common::PyTableName>(py) };
             stmt.from(x.get().clone());
         }
@@ -168,6 +175,13 @@ impl SelectInner {
             stmt.exprs(self.cols.iter().map(|x| unsafe {
                 let expr = x.cast_bound_unchecked::<PySelectExpr>(py);
                 expr.get().as_select_expr(py)
+            }));
+        }
+
+        if !self.groups.is_empty() {
+            stmt.add_group_by(self.groups.iter().map(|x| unsafe {
+                let expr = x.cast_bound_unchecked::<crate::expression::PyExpr>(py);
+                expr.get().inner.clone()
             }));
         }
 
@@ -195,6 +209,36 @@ impl SelectInner {
                 stmt.order_by_expr_with_nulls(target, order.order.clone(), x);
             } else {
                 stmt.order_by_expr(target, order.order.clone());
+            }
+        }
+
+        if let Some(lock) = &self.lock {
+            match (lock.behavior, lock.tables.is_empty()) {
+                (Some(behavior), false) => {
+                    stmt.lock_with_tables_behavior(
+                        lock.r#type,
+                        lock.tables.iter().map(|table| {
+                            let x = unsafe { table.cast_bound_unchecked::<crate::common::PyTableName>(py) };
+                            x.get().clone()
+                        }),
+                        behavior,
+                    );
+                }
+                (Some(behavior), true) => {
+                    stmt.lock_with_behavior(lock.r#type, behavior);
+                }
+                (None, false) => {
+                    stmt.lock_with_tables(
+                        lock.r#type,
+                        lock.tables.iter().map(|table| {
+                            let x = unsafe { table.cast_bound_unchecked::<crate::common::PyTableName>(py) };
+                            x.get().clone()
+                        }),
+                    );
+                }
+                (None, true) => {
+                    stmt.lock(lock.r#type);
+                }
             }
         }
 
@@ -307,7 +351,7 @@ impl PySelect {
 
         {
             let mut lock = slf.inner.lock();
-            lock.table.push(table);
+            lock.tables.push(table);
         }
 
         Ok(slf)
@@ -360,6 +404,88 @@ impl PySelect {
         {
             let mut lock = slf.inner.lock();
             lock.orders.push(order);
+        }
+
+        Ok(slf)
+    }
+
+    #[pyo3(signature=(r#type=String::from("exclusive"), behavior=None, tables=Vec::new()))]
+    fn lock(
+        slf: pyo3::PyRef<'_, Self>,
+        mut r#type: String,
+        mut behavior: Option<String>,
+        tables: Vec<pyo3::Py<pyo3::PyAny>>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'_, Self>> {
+        let r#type = {
+            r#type.make_ascii_lowercase();
+
+            if r#type == "exclusive" {
+                sea_query::LockType::Update
+            } else if r#type == "shared" {
+                sea_query::LockType::Share
+            } else {
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "acceptable lock type are: 'exclusive' and 'shared'. got invalid type",
+                ));
+            }
+        };
+
+        let behavior = match &mut behavior {
+            None => None,
+            Some(x) => {
+                x.make_ascii_lowercase();
+
+                if x == "nowait" {
+                    Some(sea_query::LockBehavior::Nowait)
+                } else if x == "skip" {
+                    Some(sea_query::LockBehavior::SkipLocked)
+                } else {
+                    return Err(pyo3::PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "acceptable lock behavior are: 'nowait' and 'skip'. got invalid behavior",
+                    ));
+                }
+            }
+        };
+
+        let mut tbs = Vec::with_capacity(tables.len());
+
+        for tb in tables.into_iter() {
+            let bound = tb.bind(slf.py());
+
+            if let Ok(x) = bound.cast_exact::<crate::table::PyTable>() {
+                let guard = x.get().inner.lock();
+                tbs.push(guard.name.clone_ref(slf.py()));
+            } else {
+                tbs.push(crate::common::PyTableName::from_pyobject(bound)?);
+            }
+        }
+
+        {
+            let mut lock = slf.inner.lock();
+            lock.lock = Some(SelectLock {
+                r#type,
+                behavior,
+                tables: tbs,
+            });
+        }
+
+        Ok(slf)
+    }
+
+    #[pyo3(signature=(*cols))]
+    fn group_by<'a>(
+        slf: pyo3::PyRef<'a, Self>,
+        cols: &'a pyo3::Bound<'a, pyo3::types::PyTuple>,
+    ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
+        let mut exprs = Vec::with_capacity(PyTupleMethods::len(cols));
+
+        for expr in PyTupleMethods::iter(cols) {
+            exprs.push(crate::expression::PyExpr::from_bound_into_any(expr)?);
+        }
+
+        {
+            let mut lock = slf.inner.lock();
+            lock.groups = exprs;
         }
 
         Ok(slf)

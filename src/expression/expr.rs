@@ -102,6 +102,11 @@ impl PyExpr {
                 let value = value.cast_into_unchecked::<crate::common::PyColumnRef>();
 
                 Ok(Self::from_column_ref(value.get().clone().into_column_ref()))
+            } else if type_ptr == crate::typeref::COLUMN_TYPE {
+                let value = value.cast_into_unchecked::<crate::column::PyColumn>();
+                let mut lock = value.get().inner.lock();
+                
+                Ok(Self::from_column_ref(lock.as_column_ref(value.py())))
             } else if type_ptr == crate::typeref::FUNCTION_CALL_TYPE {
                 let value = value.cast_into_unchecked::<super::function::PyFunctionCall>();
 

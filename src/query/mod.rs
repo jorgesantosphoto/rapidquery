@@ -3,5 +3,5 @@ pub mod insert;
 pub mod on_conflict;
 pub mod order;
 pub mod returning;
-pub mod update;
 pub mod select;
+pub mod update;
