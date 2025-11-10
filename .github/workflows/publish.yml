@@ -142,7 +142,7 @@ jobs:
         uses: PyO3/maturin-action@v1.49.4
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --uv --out dist --interpreter ${{ matrix.platform.interpreter }}
+          args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           rust-toolchain: nightly
 
