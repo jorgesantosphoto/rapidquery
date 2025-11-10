@@ -71,7 +71,7 @@ mod _lib {
         PyAlterTable, PyAlterTableAddColumnOption, PyAlterTableAddForeignKeyOption,
         PyAlterTableDropColumnOption, PyAlterTableDropForeignKeyOption, PyAlterTableModifyColumnOption,
         PyAlterTableOptionMeta, PyAlterTableRenameColumnOption, PyDropTable, PyRenameTable, PyTable,
-        PyTruncateTable,
+        PyTruncateTable, Py_TableColumnsSequence,
     };
 
     #[pymodule_export]

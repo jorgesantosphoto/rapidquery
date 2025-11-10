@@ -8,16 +8,15 @@ pub use ops::{
 
 use crate::backend::PySchemaStatement;
 use pyo3::types::PyAnyMethods;
-use std::collections::HashMap;
 
-type ColumnsMap = HashMap<String, pyo3::Py<pyo3::PyAny>>;
+type ColumnsSequence = Vec<(String, pyo3::Py<pyo3::PyAny>)>;
 
 pub struct TableInner {
     // Always is `TableName`
     pub name: pyo3::Py<pyo3::PyAny>,
 
-    // Always is `HashMap<String, Column>`
-    pub columns: ColumnsMap,
+    // Always is `ColumnsSequence<String, Column>`
+    pub columns: ColumnsSequence,
 
     // Always is `Vec<Index>`
     pub indexes: Vec<pyo3::Py<pyo3::PyAny>>,
@@ -46,7 +45,7 @@ impl TableInner {
             x.get().clone()
         });
 
-        for col in self.columns.values() {
+        for (_, col) in self.columns.iter() {
             let colbound = unsafe { col.cast_bound_unchecked::<crate::column::PyColumn>(py) };
             let collock = colbound.get().inner.lock();
 
@@ -123,9 +122,84 @@ impl TableInner {
     }
 }
 
+#[pyo3::pyclass(module = "rapidquery._lib", name = "_TableColumnsSequence", frozen)]
+#[allow(non_camel_case_types)]
+pub struct Py_TableColumnsSequence {
+    pub inner: std::sync::Arc<parking_lot::Mutex<TableInner>>,
+}
+
+#[pyo3::pymethods]
+impl Py_TableColumnsSequence {
+    fn __getattr__(slf: pyo3::PyRef<'_, Self>, name: String) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let lock = slf.inner.lock();
+
+        lock.columns
+            .iter()
+            .find(|(name, _)| name == name)
+            .map(|(_, x)| x.clone_ref(slf.py()))
+            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))
+    }
+
+    fn get(slf: pyo3::PyRef<'_, Self>, name: String) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let lock = slf.inner.lock();
+
+        lock.columns
+            .iter()
+            .find(|(name, _)| name == name)
+            .map(|(_, x)| x.clone_ref(slf.py()))
+            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))
+    }
+
+    fn append(&self, col: pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<()> {
+        unsafe {
+            let mut lock = self.inner.lock();
+
+            if std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE) {
+                return Err(typeerror!("expected Column, got {:?}", col.py(), col.as_ptr()));
+            }
+
+            let colbound = col.cast_unchecked::<crate::column::PyColumn>();
+            let mut colobj = colbound.get().inner.lock();
+
+            colobj.column_ref = crate::column::LazyColumnRef::TableName(lock.name.clone_ref(col.py()));
+
+            let name = colobj.name.clone();
+            drop(colobj);
+
+            lock.columns.push((name, col.unbind()));
+        }
+
+        Ok(())
+    }
+
+    fn remove(slf: pyo3::PyRef<'_, Self>, name: String) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let mut lock = slf.inner.lock();
+
+        let position = lock
+            .columns
+            .iter()
+            .position(|(name, _)| name == name)
+            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))?;
+
+        let (_, x) = lock.columns.remove(position);
+        Ok(x.clone_ref(slf.py()))
+    }
+
+    fn to_list(slf: pyo3::PyRef<'_, Self>) -> Vec<pyo3::Py<pyo3::PyAny>> {
+        let lock = slf.inner.lock();
+
+        lock.columns.iter().map(|(_, x)| x.clone_ref(slf.py())).collect()
+    }
+
+    fn clear(slf: pyo3::PyRef<'_, Self>) {
+        let mut lock = slf.inner.lock();
+        lock.columns.clear();
+    }
+}
+
 #[pyo3::pyclass(module = "rapidquery._lib", name = "Table", frozen, extends=PySchemaStatement)]
 pub struct PyTable {
-    pub inner: parking_lot::Mutex<TableInner>,
+    pub inner: std::sync::Arc<parking_lot::Mutex<TableInner>>,
 }
 
 #[pyo3::pymethods]
@@ -165,7 +239,7 @@ impl PyTable {
 
         let name = crate::common::PyTableName::from_pyobject(name)?;
 
-        let mut cols = ColumnsMap::with_capacity(columns.len());
+        let mut cols = ColumnsSequence::with_capacity(columns.len());
         for col in columns {
             unsafe {
                 if std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE) {
@@ -180,7 +254,7 @@ impl PyTable {
                 let name = colobj.name.clone();
                 drop(colobj);
 
-                cols.insert(name, col);
+                cols.push((name, col));
             }
         }
 
@@ -234,7 +308,7 @@ impl PyTable {
         };
 
         let slf = Self {
-            inner: parking_lot::Mutex::new(inner),
+            inner: std::sync::Arc::new(parking_lot::Mutex::new(inner)),
         };
 
         Ok(pyo3::PyClassInitializer::from((slf, PySchemaStatement)))
@@ -247,35 +321,19 @@ impl PyTable {
     }
 
     #[getter]
-    fn columns(&self, py: pyo3::Python) -> Vec<pyo3::Py<pyo3::PyAny>> {
-        let lock = self.inner.lock();
-
-        lock.columns.values().map(|x| x.clone_ref(py)).collect()
+    fn columns(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let map = Py_TableColumnsSequence {
+            inner: std::sync::Arc::clone(&self.inner),
+        };
+        pyo3::Py::new(py, map).map(|x| x.into_any())
     }
 
-    #[setter]
-    fn set_columns(&self, py: pyo3::Python, val: Vec<pyo3::Py<pyo3::PyAny>>) -> pyo3::PyResult<()> {
-        let mut cols = ColumnsMap::with_capacity(val.len());
-        for col in val {
-            unsafe {
-                if std::hint::unlikely(pyo3::ffi::Py_TYPE(col.as_ptr()) != crate::typeref::COLUMN_TYPE) {
-                    return Err(typeerror!("expected Column, got {:?}", py, col.as_ptr()));
-                }
-
-                let colbound = col.cast_bound_unchecked::<crate::column::PyColumn>(py);
-                let colobj = colbound.get().inner.lock();
-
-                let name = colobj.name.clone();
-                drop(colobj);
-
-                cols.insert(name, col);
-            }
-        }
-
-        let mut lock = self.inner.lock();
-        lock.columns = cols;
-
-        Ok(())
+    #[getter]
+    fn c(&self, py: pyo3::Python) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
+        let map = Py_TableColumnsSequence {
+            inner: std::sync::Arc::clone(&self.inner),
+        };
+        pyo3::Py::new(py, map).map(|x| x.into_any())
     }
 
     #[getter]
@@ -452,15 +510,6 @@ impl PyTable {
         Ok(())
     }
 
-    fn get_column(&self, py: pyo3::Python, name: &str) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
-        let lock = self.inner.lock();
-
-        lock.columns
-            .get(name)
-            .map(|x| x.clone_ref(py))
-            .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))
-    }
-
     fn to_sql(&self, backend: &pyo3::Bound<'_, pyo3::PyAny>) -> pyo3::PyResult<String> {
         let lock = self.inner.lock();
         let stmt = lock.as_table_create_statement(backend.py());
@@ -487,7 +536,7 @@ impl PyTable {
         write!(s, "<Table name={} columns=[", lock.name).unwrap();
 
         let n = lock.columns.len();
-        for (index, col) in lock.columns.values().enumerate() {
+        for (index, (_, col)) in lock.columns.iter().enumerate() {
             if index + 1 == n {
                 write!(s, "{col}").unwrap();
             } else {

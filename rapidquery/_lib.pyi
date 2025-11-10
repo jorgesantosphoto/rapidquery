@@ -2249,6 +2249,14 @@ class DropIndex:
         """
         ...
 
+class _TableColumnsSequence:
+    def __getattr__(self, name: str) -> Column: ...
+    def get(self, name: str) -> Column: ...
+    def append(self, col: Column) -> None: ...
+    def remove(self, name: str) -> None: ...
+    def to_list(self) -> typing.Sequence[Column]: ...
+    def clear(self) -> None: ...
+
 class Table(SchemaStatement):
     """
     Represents a complete database table definition.
@@ -2272,13 +2280,6 @@ class Table(SchemaStatement):
         ...     indexes=[Index(["email"])],
         ...     if_not_exists=True
         ... )
-    """
-
-    columns: typing.Sequence[Column]
-    """
-    The columns that make up this table.
-    
-    NOTE: The order may not be followed and may be different each time you access this attribute.
     """
 
     indexes: typing.Sequence[Index]
@@ -2351,6 +2352,16 @@ class Table(SchemaStatement):
     @property
     def name(self) -> TableName:
         """The name of this table."""
+        ...
+
+    @property
+    def columns(self) -> _TableColumnsSequence:
+        """Returns columns as `_TableColumnsSequence`"""
+        ...
+
+    @property
+    def c(self) -> _TableColumnsSequence:
+        """Returns columns as `_TableColumnsSequence`. It is an alias for `self.columns`"""
         ...
 
     def get_column(self, name: str) -> Column:
@@ -3308,5 +3319,5 @@ class Select(QueryStatement):
         table: typing.Union[str, TableName, Table],
         on: _ExprValue,
         type: typing.Literal["", "cross", "full", "inner", "right", "left"] = ...,
-        lateral: bool = ...
+        lateral: bool = ...,
     ) -> Self: ...
