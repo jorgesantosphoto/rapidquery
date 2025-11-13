@@ -692,7 +692,6 @@ impl PySelect {
         table: &'a pyo3::Bound<'a, pyo3::PyAny>,
         on: &'a pyo3::Bound<'a, pyo3::PyAny>,
         mut r#type: String,
-        // lateral: bool,
     ) -> pyo3::PyResult<pyo3::PyRef<'a, Self>> {
         let r#type = {
             r#type.make_ascii_lowercase();
@@ -716,7 +715,17 @@ impl PySelect {
             }
         };
 
-        let table = crate::common::PyTableName::from_pyobject(table)?;
+        let table = {
+            if let Ok(x) = table.cast_exact::<crate::table::PyTable>() {
+                let guard = x.get().inner.lock();
+                guard.name.clone_ref(slf.py())
+            } else if let Ok(x) = table.cast_exact::<crate::table::PyAliasedTable>() {
+                x.get().name(slf.py())?
+            } else {
+                crate::common::PyTableName::from_pyobject(table)?
+            }
+        };
+        
         let expr = crate::expression::PyExpr::from_bound_into_any(on.clone())?;
 
         let join_expr = SelectJoin {

@@ -3519,7 +3519,7 @@ class Select(QueryStatement):
 
     def join(
         self,
-        table: typing.Union[str, TableName, Table],
+        table: typing.Union[str, TableName, Table, AliasedTable],
         on: _ExprValue,
         type: typing.Literal["", "cross", "full", "inner", "right", "left"] = ...,
     ) -> Self:

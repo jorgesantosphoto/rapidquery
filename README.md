@@ -58,9 +58,9 @@ When building SQL statements, you should specify your target backend.
     8. [**Index Create**](#index-create)
     9. [**Index Drop**](#index-drop)
 5. Advanced
-    1. [**ORM-like**]()
-    2. [**AliasedTable**]()
-    3. [**Advanced Tips**]()
+    1. [**ORM-like**](#orm-like)
+    2. [**Table Alias**](#table-alias)
+    3. [**Tips**]()
     4. [**Benchmark**]()
     5. [**Performance Tips**]()
 6. Known Issues & Problems
@@ -595,6 +595,127 @@ stmt = rq.DropIndex("ix_users_user_reseller_id")
 stmt.to_sql("postgresql")
 # DROP INDEX "ix_users_user_reseller_id"
 ```
+
+### Advanced
+#### ORM-like
+`Table` class is not just for generating CREATE TABLE statements. It's designed to make developing
+easier for you.
+
+First you have to know some basics:
+```python
+users = rq.Table(
+    "users",
+    [
+        rq.Column("id", rq.IntegerType()),
+        rq.Column("name", rq.CharType(255)),
+    ]
+)
+
+# You can access columns easily:
+users.c.id         # -> <Column "id" type=<IntegerType >>
+users.c.name       # -> <Column "name" type=<CharType length=255>>
+users.c.not_exists # -> KeyError: 'not_exists'
+```
+
+Now you can use this structure to create `Select`, `Update`, `Delete`, and `Insert` queries:
+```python
+query = (
+    rq.Select(users.c.name)
+        .from_table(users)
+        .where(users.c.id.to_expr() == 2)
+)
+sql, params = query.build("postgresql")
+# SELECT "users"."name" FROM "users" WHERE "users"."id" = $1
+```
+
+#### Table Alias
+Using `Table` for creating queries can help you to create queries easier, but again it's hard to
+have aliases (e.g. `FROM users AS u`) in queries. So we have **`AliasedTable`** class to make it
+easy.
+
+Imagine this table:
+```python
+employees = rq.Table(
+    "employees",
+    [
+        rq.Column("id", rq.IntegerType()),
+        rq.Column("first_name", rq.CharType(255)),
+        rq.Column("jon_title", rq.CharType(255)),
+    ]
+)
+```
+
+**Without AliasedTable**
+```python
+query = (
+    rq.Select(
+        employees.c.id.to_column_ref().copy_with(table="emp"),
+        rq.SelectExpr(
+            employees.c.name.to_column_ref().copy_with(table="emp"),
+            "employee_name",
+        ),
+        employees.c.job_title.to_column_ref().copy_with(table="emp"),
+        rq.SelectExpr(employees.c.id.to_column_ref().copy_with(table="mgr"), "manager_id"),
+        rq.SelectExpr(
+            employees.c.name.to_column_ref().copy_with(table="mgr"),
+            "employee_name",
+        ),
+        rq.SelectExpr(
+            employees.c.job_title.to_column_ref().copy_with(table="mgr"), "manager_title"
+        ),
+    )
+    .from_table(employees.name.copy_with(alias="emp"))
+    .join(
+        employees.name.copy_with(alias="mgr"),
+        (
+            rq.Expr(employees.c.manager_id.to_column_ref().copy_with(table="emp"))
+            == employees.c.id.to_column_ref().copy_with(table="mgr")
+        ),
+        type="inner"
+    )
+)
+sql, params = query.build("postgresql")
+# SELECT
+#   "emp"."id", "emp"."name" AS "employee_name",
+#   "emp"."job_title", "mgr"."id" AS "manager_id",
+#   "mgr"."name" AS "employee_name", "mgr"."job_title" AS "manager_title"
+# FROM "employees" AS "emp"
+# INNER JOIN "employees" AS "mgr" ON "emp"."manager_id" = "mgr"."id"
+```
+
+It's so hard and un-readable.
+
+**With AliasedTable**
+```python
+emp = rq.AliasedTable(employees, "emp")
+mgr = rq.AliasedTable(employees, "mgr")
+
+query = (
+    rq.Select(
+        emp.c.id,
+        rq.SelectExpr(emp.c.name, "employee_name"),
+        emp.c.job_title,
+        rq.SelectExpr(emp.c.id, "manager_id"),
+        rq.SelectExpr(emp.c.name, "employee_name"),
+        rq.SelectExpr(emp.c.job_title, "manager_title"),
+    )
+    .from_table(emp)
+    .join(
+        mgr,
+        rq.Expr(emp.c.manager_id) == mgr.c.id,
+        type="inner",
+    )
+)
+sql, params = query.build("postgresql")
+# SELECT
+#   "emp"."id", "emp"."name" AS "employee_name",
+#   "emp"."job_title", "mgr"."id" AS "manager_id",
+#   "mgr"."name" AS "employee_name", "mgr"."job_title" AS "manager_title"
+# FROM "employees" AS "emp"
+# INNER JOIN "employees" AS "mgr" ON "emp"."manager_id" = "mgr"."id"
+```
+
+As you saw, it's more simple.
 
 TODOs:
 - CaseStatement
