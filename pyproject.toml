@@ -34,7 +34,9 @@ dynamic = [
     'readme',
     'version'
 ]
-dependencies = []
+dependencies = [
+    "pypika>=0.48.9",
+]
 
 [project.urls]
 Homepage = 'https://github.com/awolverp/rapidquery'

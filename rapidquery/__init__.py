@@ -1,3 +1,12 @@
+"""
+**RapidQuery: High-Performance SQL Query Builder for Python**
+
+RapidQuery is a powerful SQL query builder library designed for Python, combining
+the simplicity of Python with the raw speed and safety of **Rust**. Build complex
+SQL queries effortlessly and efficiently, with a library that prioritizes both
+performance and ease of use.
+"""
+
 from ._lib import ASTERISK as ASTERISK
 from ._lib import AdaptedValue as AdaptedValue
 from ._lib import AliasedTable as AliasedTable

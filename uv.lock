@@ -173,6 +173,9 @@ wheels = [
 [[package]]
 name = "rapidquery"
 source = { editable = "." }
+dependencies = [
+    { name = "pypika" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -183,6 +186,7 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "pypika", specifier = ">=0.48.9" }]
 
 [package.metadata.requires-dev]
 dev = [

@@ -30,11 +30,21 @@ pip3 install rapidquery
 ```
 
 > [!NOTE]\
-> RapidQuery supports Python 3.10 and above (CPython & PyPy).
+> RapidQuery requires Python 3.10+. Supports CPython and PyPy.
 
 ## Supported Databases
 RapidQuery supports `PostgreSQL`, `MySQL`, and `SQLite` databases. In RapidQuery, we're calling them `backend`.
 When building SQL statements, you should specify your target backend.
+
+## Quick Example
+```python
+import rapidquery as rq
+import datetime
+
+stmt = rq.Insert().into("repositories").values(name="RapidQuery", created_at=datetime.datetime.now())
+stmt.to_sql("postgres")
+# INSERT INTO "repositories" ("name", "created_at") VALUES ('RapidQuery', '2025-11-14 16:18:59.188940')
+```
 
 ## Usage
 
@@ -60,12 +70,9 @@ When building SQL statements, you should specify your target backend.
 5. Advanced
     1. [**ORM-like**](#orm-like)
     2. [**Table Alias**](#table-alias)
-    3. [**Tips**]()
-    4. [**Benchmark**]()
-    5. [**Performance Tips**]()
-6. Known Issues & Problems
-    1. [**Known Issues**]()
-    2. [**TODOs**]()
+6. Performance
+    1. [**Benchmarks**](#benchmarks)
+    2. [**Performance Tips**](#performance-tips)
 
 ### Basics
 #### AdaptedValue
@@ -717,9 +724,103 @@ sql, params = query.build("postgresql")
 
 As you saw, it's more simple.
 
-TODOs:
-- CaseStatement
-- Select Windows
-- CTE + Cycle + Search
-- Optimize Table and AliasedTable
-- Write `inspect` submodule for inspecting query statements.
+### Performance
+#### Benchmarks
+
+> [!NOTE]
+> Benchmarks run on *Linux-6.15.11-2-MANJARO-x86_64-with-glibc2.42* with CPython 3.13. Your results may vary.
+
+**Generating Insert Query 100,000x**
+```python
+# RapidQuery
+query = rq.Select(rq.Expr.asterisk()).from_table("users").where(rq.Expr.col("name").like(r"%linus%")) \
+        .offset(20).limit(20)
+
+query.to_sql('postgresql')
+
+# PyPika
+query = pypika.Query.from_("users").where(pypika.Field("name").like(r"%linus%")) \
+        .offset(20).limit(20).select("*")
+
+str(query)
+```
+
+```
+RapidQuery: 254ms
+PyPika: 3983ms
+```
+
+**Generating Select Query 100,000x**
+```python
+# RapidQuery
+query = rq.Insert().into("glyph").columns("aspect", "image") \
+        .values(5.15, "12A") \
+        .values(16, "14A") \
+        .returning("id")
+
+query.to_sql('postgresql')
+
+# PyPika
+query = pypika.Query.into("glyph").columns("aspect", "image") \
+        .insert(5.15, "12A") \
+        .insert(16, "14A")
+
+str(query)
+```
+
+```
+RapidQuery: 267ms
+PyPika: 4299ms
+```
+
+**Generating Update Query 100,000x**
+```python
+# RapidQuery
+query = rq.Update().table("wallets").values(amount=rq.Expr.col("amount") + 10).where(rq.Expr.col("id").between(10, 30))
+
+query.to_sql('postgresql')
+
+# PyPika
+query = pypika.Query.update("wallets").set("amount", pypika.Field("amount") + 10) \
+        .where(pypika.Field("id").between(10, 30))
+
+str(query)
+```
+
+```
+RapidQuery: 252ms
+PyPika: 4412ms
+```
+
+**Generating Delete Query 100,000x**
+```python
+# RapidQuery
+query = rq.Delete().from_table("users") \
+        .where(
+            rq.all(
+                rq.Expr.col("id") > 10,
+                rq.Expr.col("id") < 30,
+            )
+        ) \
+        .limit(10)
+
+query.to_sql('postgresql')
+
+# PyPika
+query = pypika.Query.from_("users") \
+        .where(
+            (pypika.Field("id") > 10) & (pypika.Field("id") < 30),
+        ) \
+        .limit(10).delete()
+
+str(query)
+```
+
+```
+RapidQuery: 240ms
+PyPika: 4556ms
+```
+
+#### Performance Tips
+- Using [`ORM-like`](#orm-like) is always slower than using `Expr.col` and literal `str`
+- "Less calls, more speed"; RapidQuery powered by Rust & SeaQuery, which made us very fast, and only thing that can effect speed, is object calls in Python.
