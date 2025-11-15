@@ -330,11 +330,7 @@ class TestDeleteEdgeCases:
 
     def test_delete_order_by_without_limit(self):
         """ORDER BY in DELETE without LIMIT (may be ineffective)."""
-        delete = (
-            _lib.Delete()
-            .from_table("users")
-            .order_by(_lib.Expr.col("created_at"), "asc")
-        )
+        delete = _lib.Delete().from_table("users").order_by(_lib.Expr.col("created_at"), "asc")
         sql, params = delete.build("postgresql")
         # PostgreSQL may not support this, but should build
         assert "DELETE" in sql.upper()
