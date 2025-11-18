@@ -364,7 +364,7 @@ query = (
 )
 sql, params = query.build("postgresql")
 # INSERT INTO "users" ("username", "role") VALUES ($1, $2)
-# ON CONFLICT ("id") DO UPDATE SET "author" = $3
+# ON CONFLICT ("id") DO UPDATE SET "role" = $3
 ```
 
 #### Query Update

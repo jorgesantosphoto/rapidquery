@@ -145,8 +145,8 @@ pub struct SelectInner {
     // Always is `Option<SelectExpr>`
     pub cols: Vec<pyo3::Py<pyo3::PyAny>>,
 
-    // Always is `Option<PyExpr>`
-    pub r#where: Option<pyo3::Py<pyo3::PyAny>>,
+    // Always is `Vec<PyExpr>`
+    pub r#where: Vec<pyo3::Py<pyo3::PyAny>>,
 
     // Always is `Vec<PyExpr>`
     pub groups: Vec<pyo3::Py<pyo3::PyAny>>,
@@ -229,7 +229,7 @@ impl SelectInner {
             }));
         }
 
-        if let Some(x) = &self.r#where {
+        for x in &self.r#where {
             let x = unsafe { x.cast_bound_unchecked::<crate::expression::PyExpr>(py) };
             stmt.and_where(x.get().inner.clone());
         }
@@ -519,7 +519,7 @@ impl PySelect {
 
         {
             let mut lock = slf.inner.lock();
-            lock.r#where = Some(condition);
+            lock.r#where.push(condition);
         }
 
         Ok(slf)
