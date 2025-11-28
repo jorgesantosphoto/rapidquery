@@ -3238,7 +3238,37 @@ class Update(QueryStatement):
 
     def __repr__(self) -> str: ...
 
-class SelectExpr:
+
+class WindowFrame:
+    @classmethod
+    def unbounded_preceding(cls) -> Self: ...
+    @classmethod
+    def unbounded_following(cls) -> Self: ...
+    @classmethod
+    def current_row(cls) -> Self: ...
+    @classmethod
+    def preceding(cls, val: int) -> Self: ...
+    @classmethod
+    def following(cls, val: int) -> Self: ...
+
+class Window:
+    def __new__(cls, *partition_by: Expr) -> Self: ...
+    def partition(self, *partition_by: Expr) -> Self: ...
+    def order_by(
+        self,
+        target: _ExprValue,
+        order: typing.Literal["asc", "desc"],
+        null_order: typing.Optional[typing.Literal["first", "last"]] = ...,
+    ) -> Self: ...
+    def frame(
+        self,
+        type: typing.Literal["rows", "range"],
+        start: WindowFrame,
+        end: typing.Optional[WindowFrame] = None,
+    ) -> Self: ...
+
+
+class SelectCol:
     """
     Represents a column expression with an optional alias in a SELECT clause.
 
@@ -3246,20 +3276,21 @@ class SelectExpr:
     for the result column.
 
     Example:
-        >>> SelectExpr(Expr.col("price") * 1.1, "price_with_tax")
-        >>> SelectExpr(Expr.count(), "total_count")
+
+        >>> SelectCol(Expr.col("price") * 1.1, "price_with_tax")
+        >>> SelectCol(Expr.count(), "total_count")
     """
 
-    def __new__(cls, expr: _ExprValue, alias: typing.Optional[str] = ...):
+    def __new__(cls, expr: _ExprValue, alias: typing.Optional[str] = ..., window: typing.Union[str, Window, None] = ...):
         """
-        Create a new SelectExpr.
+        Create a new SelectCol.
 
         Args:
             expr: The expression to select
             alias: Optional alias name for the result column
 
         Returns:
-            A new SelectExpr instance
+            A new SelectCol instance
         """
         ...
 
@@ -3271,6 +3302,10 @@ class SelectExpr:
     @property
     def alias(self) -> typing.Optional[str]:
         """The alias name for the result column, if any."""
+        ...
+
+    @property
+    def window(self) -> typing.Union[str, Window, None]:
         ...
 
     def __repr__(self) -> str: ...
@@ -3291,6 +3326,7 @@ class Select(QueryStatement):
     - DISTINCT queries
 
     Example:
+    
         >>> Select(Expr.col("name"), Expr.col("email")).from_table("users") \\
         ...     .where(Expr.col("active") == True) \\
         ...     .order_by(Order(Expr.col("created_at"), ORDER_DESC)) \\
@@ -3300,12 +3336,12 @@ class Select(QueryStatement):
         ...     .where(Expr.col("published") == True)
     """
 
-    def __new__(cls, *cols: typing.Union[SelectExpr, _ExprValue]) -> Self:
+    def __new__(cls, *cols: typing.Union[SelectCol, _ExprValue]) -> Self:
         """
         Create a new SELECT statement builder.
 
         Args:
-            *cols: Optional initial columns to select (expressions or SelectExpr objects)
+            *cols: Optional initial columns to select (expressions or SelectCol objects)
 
         Returns:
             A new Select instance
@@ -3324,12 +3360,12 @@ class Select(QueryStatement):
         """
         ...
 
-    def columns(self, *cols: typing.Union[SelectExpr, _ExprValue]) -> Self:
+    def columns(self, *cols: typing.Union[SelectCol, _ExprValue]) -> Self:
         """
         Specify or add columns to select.
 
         Args:
-            *cols: Column names, expressions, or SelectExpr objects to select
+            *cols: Column names, expressions, or SelectCol objects to select
 
         Returns:
             Self for method chaining
@@ -3544,8 +3580,8 @@ class Select(QueryStatement):
         """
         ...
 
+    def window(self, name: str, statement: Window) -> Self: ...
     def __repr__(self) -> str: ...
-
 
 class Case:
     def __new__(cls) -> Self: ...

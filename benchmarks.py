@@ -31,15 +31,15 @@ def benchmark(func: typing.Callable, number=ITERATIONS) -> float:
 def format_results(results: typing.Dict[str, float]) -> str:
     if not results:
         return "No results to display"
-    
+
     # Find fastest time
     fastest = min(results.values())
-    
+
     lines = []
     lines.append("-" * 70)
     lines.append(f"{'Library':<20} {'Time (ms)':<15} {'vs Fastest':<15} {'Status':<20}")
     lines.append("-" * 70)
-    
+
     for lib, time_ms in sorted(results.items(), key=lambda x: x[1]):
         if time_ms == fastest:
             ratio = "1.00x (FASTEST)"
@@ -47,14 +47,15 @@ def format_results(results: typing.Dict[str, float]) -> str:
         else:
             ratio = f"{time_ms / fastest:.2f}x slower"
             status = ""
-        
+
         lines.append(f"{lib:<20} {time_ms:>10.2f}     {ratio:<15} {status}")
-    
+
     lines.append("-" * 70)
     return "\n".join(lines)
 
 
 # SELECT Query Benchmarks
+
 
 def bench_select_rapidquery():
     query = (
@@ -64,12 +65,12 @@ def bench_select_rapidquery():
         .offset(20)
         .limit(20)
     )
-    query.to_sql('postgresql')
+    query.to_sql("postgresql")
 
 
 def bench_select_sqlalchemy():
     query = (
-        sa.select(sa.text('*'))
+        sa.select(sa.text("*"))
         .select_from(sa.table("users"))
         .where(sa.column("name").like(r"%linus%"))
         .offset(20)
@@ -91,39 +92,38 @@ def bench_select_pypika():
 
 # INSERT Query Benchmarks
 
+
 def bench_insert_rapidquery():
     query = (
         rq.Insert()
-            .into("glyph")
-            .columns("aspect", "image")
-            .values(5.15, "12A")
-            .values(16, "14A")
-            .returning("id")
+        .into("glyph")
+        .columns("aspect", "image")
+        .values(5.15, "12A")
+        .values(16, "14A")
+        .returning("id")
     )
-    query.to_sql('postgresql')
+    query.to_sql("postgresql")
 
 
 sa_glyph = sa.table("glyph", sa.column("aspect", sa.Float), sa.column("image", sa.String))
 
+
 def bench_insert_sqlalchemy():
-    query = sa.insert(sa_glyph).values([
-        {"aspect": 5.15, "image": "12A"},
-        {"aspect": 16, "image": "14A"}
-    ])
+    query = sa.insert(sa_glyph).values(
+        [{"aspect": 5.15, "image": "12A"}, {"aspect": 16, "image": "14A"}]
+    )
     str(query.compile(dialect=SA_DIALECT, compile_kwargs={"literal_binds": True}))
 
 
 def bench_insert_pypika():
     query = (
-        pypika.Query.into("glyph")
-        .columns("aspect", "image")
-        .insert(5.15, "12A")
-        .insert(16, "14A")
+        pypika.Query.into("glyph").columns("aspect", "image").insert(5.15, "12A").insert(16, "14A")
     )
     str(query)
 
 
 # UPDATE Query Benchmarks
+
 
 def bench_update_rapidquery():
     query = (
@@ -132,10 +132,11 @@ def bench_update_rapidquery():
         .values(amount=rq.Expr.col("amount") + 10)
         .where(rq.Expr.col("id").between(10, 30))
     )
-    query.to_sql('postgresql')
+    query.to_sql("postgresql")
 
 
 sa_wallets = sa.table("wallets", sa.column("amount", sa.Integer), sa.column("id", sa.Integer))
+
 
 def bench_update_sqlalchemy():
     query = (
@@ -157,6 +158,7 @@ def bench_update_pypika():
 
 # DELETE Query Benchmarks
 
+
 def bench_delete_rapidquery():
     query = (
         rq.Delete()
@@ -168,17 +170,14 @@ def bench_delete_rapidquery():
             )
         )
     )
-    query.to_sql('postgresql')
+    query.to_sql("postgresql")
 
 
 sa_users = sa.table("users", sa.column("id", sa.Integer))
 
 
 def bench_delete_sqlalchemy():
-    query = (
-        sa.delete(sa_users)
-        .where(sa.and_(sa_users.c.id > 10, sa_users.c.id < 30))
-    )
+    query = sa.delete(sa_users).where(sa.and_(sa_users.c.id > 10, sa_users.c.id < 30))
     str(query.compile(dialect=SA_DIALECT, compile_kwargs={"literal_binds": True}))
 
 
@@ -198,7 +197,7 @@ def run_benchmarks():
 
     print("\n📊 SELECT Query Benchmark")
     results = {
-        "RapidQuery":  benchmark(bench_select_rapidquery),
+        "RapidQuery": benchmark(bench_select_rapidquery),
         "SQLAlchemy": benchmark(bench_select_sqlalchemy),
         "PyPika": benchmark(bench_select_pypika),
     }
@@ -206,7 +205,7 @@ def run_benchmarks():
 
     print("\n📊 INSERT Query Benchmark")
     results = {
-        "RapidQuery":  benchmark(bench_insert_rapidquery),
+        "RapidQuery": benchmark(bench_insert_rapidquery),
         "SQLAlchemy": benchmark(bench_insert_sqlalchemy),
         "PyPika": benchmark(bench_insert_pypika),
     }
@@ -214,7 +213,7 @@ def run_benchmarks():
 
     print("\n📊 UPDATE Query Benchmark")
     results = {
-        "RapidQuery":  benchmark(bench_update_rapidquery),
+        "RapidQuery": benchmark(bench_update_rapidquery),
         "SQLAlchemy": benchmark(bench_update_sqlalchemy),
         "PyPika": benchmark(bench_update_pypika),
     }
@@ -222,12 +221,12 @@ def run_benchmarks():
 
     print("\n📊 DELETE Query Benchmark")
     results = {
-        "RapidQuery":  benchmark(bench_delete_rapidquery),
+        "RapidQuery": benchmark(bench_delete_rapidquery),
         "SQLAlchemy": benchmark(bench_delete_sqlalchemy),
         "PyPika": benchmark(bench_delete_pypika),
     }
     print(format_results(results))
-    
+
 
 if __name__ == "__main__":
     run_benchmarks()

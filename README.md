@@ -260,55 +260,13 @@ sql, params = query.build("postgresql")
 
 query = (
     rq.Select(
-        rq.SelectExpr(rq.FunctionCall.count(rq.ASTERISK), alias="total_customers"),
-        rq.SelectExpr(rq.FunctionCall.avg(rq.Expr.col("age")), alias="average_age"),
+        rq.SelectCol(rq.FunctionCall.count(rq.ASTERISK), alias="total_customers"),
+        rq.SelectCol(rq.FunctionCall.avg(rq.Expr.col("age")), alias="average_age"),
     )
         .from_table("customers")
 )
 sql, params = query.build("postgresql")
 # -> SELECT COUNT(*) AS "total_customers", AVG("age") AS "average_age" FROM "customers"
-```
-
-**Complex**
-```python
-# This query would be easier to create by using `AliasedTable` class,
-# which introduced in "Advanced" part of this page
-query = (
-    rq.Select(
-        rq.Expr.col("c.customer_name"),
-        rq.SelectExpr(
-            rq.FunctionCall.count(rq.Expr.col("o.order_id")),
-            "total_orders"
-        ),
-        rq.SelectExpr(
-            rq.FunctionCall.sum(rq.Expr.col("oi.quantity") * rq.Expr.col("oi.unit_price")),
-            "total_spent"
-        ),
-    )
-        .from_table(rq.TableName("customers", alias="c"))
-        .join(
-            rq.TableName("orders", alias="o"),
-            rq.Expr.col("c.customer_id") == rq.Expr.col("o.customer_id"),
-            type="left"
-        )
-        .join(
-            rq.TableName("order_items", alias="oi"),
-            rq.Expr.col("o.order_id") == rq.Expr.col("oi.order_id"),
-            type="left"
-        )
-        .where(
-            rq.Expr.col("o.order_date") >= (datetime.datetime.now() - datetime.timedelta(days=360))
-        )
-)
-sql, params = query.build("postgresql")
-# SELECT
-#   "c"."customer_name",
-#   COUNT("o"."order_id") AS "total_orders",
-#   SUM("oi"."quantity" * "oi"."unit_price") AS "total_spent"
-# FROM "customers" AS "c"
-# LEFT JOIN "orders" AS "o" ON "c"."customer_id" = "o"."customer_id"
-# LEFT JOIN "order_items" AS "oi" ON "o"."order_id" = "oi"."order_id"
-# WHERE "o"."order_date" >= $1
 ```
 
 #### Query Insert
@@ -660,17 +618,17 @@ employees = rq.Table(
 query = (
     rq.Select(
         employees.c.id.to_column_ref().copy_with(table="emp"),
-        rq.SelectExpr(
+        rq.SelectCol(
             employees.c.name.to_column_ref().copy_with(table="emp"),
             "employee_name",
         ),
         employees.c.job_title.to_column_ref().copy_with(table="emp"),
-        rq.SelectExpr(employees.c.id.to_column_ref().copy_with(table="mgr"), "manager_id"),
-        rq.SelectExpr(
+        rq.SelectCol(employees.c.id.to_column_ref().copy_with(table="mgr"), "manager_id"),
+        rq.SelectCol(
             employees.c.name.to_column_ref().copy_with(table="mgr"),
             "employee_name",
         ),
-        rq.SelectExpr(
+        rq.SelectCol(
             employees.c.job_title.to_column_ref().copy_with(table="mgr"), "manager_title"
         ),
     )
@@ -703,11 +661,11 @@ mgr = rq.AliasedTable(employees, "mgr")
 query = (
     rq.Select(
         emp.c.id,
-        rq.SelectExpr(emp.c.name, "employee_name"),
+        rq.SelectCol(emp.c.name, "employee_name"),
         emp.c.job_title,
-        rq.SelectExpr(emp.c.id, "manager_id"),
-        rq.SelectExpr(emp.c.name, "employee_name"),
-        rq.SelectExpr(emp.c.job_title, "manager_title"),
+        rq.SelectCol(emp.c.id, "manager_id"),
+        rq.SelectCol(emp.c.name, "employee_name"),
+        rq.SelectCol(emp.c.job_title, "manager_title"),
     )
     .from_table(emp)
     .join(

@@ -14,7 +14,9 @@ impl Py_AliasedTableColumnsSequence {
             let lock = slf.inner.lock();
 
             if !lock.columns.contains_key(&name) {
-                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()));
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(
+                    name.to_owned(),
+                ));
             }
             sea_query::Alias::new(name)
         };
@@ -32,7 +34,9 @@ impl Py_AliasedTableColumnsSequence {
             let lock = slf.inner.lock();
 
             if !lock.columns.contains_key(&name) {
-                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()));
+                return Err(pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(
+                    name.to_owned(),
+                ));
             }
             sea_query::Alias::new(name)
         };

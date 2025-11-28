@@ -84,13 +84,16 @@ mod _lib {
     use super::query::update::PyUpdate;
 
     #[pymodule_export]
-    use super::query::select::{PySelect, PySelectExpr};
+    use super::query::select::{PySelect, PySelectCol};
 
     #[pymodule_export]
     use super::query::on_conflict::PyOnConflict;
 
     #[pymodule_export]
     use super::query::case::PyCase;
+
+    #[pymodule_export]
+    use super::query::window::{PyWindow, PyWindowFrame};
 
     #[pymodule_init]
     fn init(m: &pyo3::Bound<'_, pyo3::types::PyModule>) -> pyo3::PyResult<()> {

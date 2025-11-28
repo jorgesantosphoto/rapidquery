@@ -215,7 +215,7 @@ impl PyDelete {
         if let Some(x) = lock.limit {
             write!(s, " limit={x}").unwrap();
         }
-        
+
         write!(s, " where=[").unwrap();
 
         let n = lock.r#where.len();

@@ -6,8 +6,7 @@ type ColumnsSequence = indexmap::IndexMap<String, pyo3::Py<pyo3::PyAny>>;
 pub struct TableInner {
     // Always is `TableName`
     pub name: pyo3::Py<pyo3::PyAny>,
-
-    // TODO: use `indexmap` crate to optimize lookup from `O(n)` into `O(1)`
+    
     // Always is `ColumnsSequence<String, Column>`
     pub columns: ColumnsSequence,
 
@@ -166,9 +165,11 @@ impl Py_TableColumnsSequence {
     fn remove(slf: pyo3::PyRef<'_, Self>, name: String) -> pyo3::PyResult<pyo3::Py<pyo3::PyAny>> {
         let mut lock = slf.inner.lock();
 
-        let x = lock.columns.shift_remove(&name)
+        let x = lock
+            .columns
+            .shift_remove(&name)
             .ok_or_else(|| pyo3::PyErr::new::<pyo3::exceptions::PyKeyError, _>(name.to_owned()))?;
-  
+
         Ok(x.clone_ref(slf.py()))
     }
 
